@@ -3,6 +3,7 @@
 #include <semaphore.h>
 #include <allegro.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include "taskRT.h"
 #include "timeplus.h"
 
@@ -23,6 +24,8 @@
 #define INSTR_X			5
 #define INSTR_Y			10
 
+#define N_TASK			4
+
 //--------------------------------------------------------------------------
 //TYPE DEFINITIONS
 //--------------------------------------------------------------------------
@@ -37,17 +40,48 @@ void setup (void);
 void setup_grafic(int x, int y, char s[]);
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
+void draw_grafic_task_base(void);
+void * grafic_task(void * arg);
 
 //--------------------------------------------------------------------------
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
-bool	run=TRUE;
+struct timespec	zero_time;
+int				time_scale=500;
+int				x=0;
 
-int		ORIGIN_PIP_Y;
-int		ORIGIN_PIPW_Y;
-int		ORIGIN_PCP_Y;
-int		ORIGIN_PCPW_Y;
+bool			run=TRUE;
+char			run_task;
+
+bool			pip=TRUE;
+
+int				ORIGIN_PIP_Y;
+int				ORIGIN_PIPW_Y;
+int				ORIGIN_PCP_Y;
+int				ORIGIN_PCPW_Y;
+
+int				H_TASK;
+
+pthread_t		grafic_tid;
+struct task_par	grafic_tp;
+pthread_attr_t	grafic_attr;
+
+pthread_t		t1_tid;
+struct task_par	t1_tp;
+pthread_attr_t	t1_attr;
+
+pthread_t		t2_tid;
+struct task_par	t2_tp;
+pthread_attr_t	t2_attr;
+
+pthread_t		t3_tid;
+struct task_par	t3_tp;
+pthread_attr_t	t3_attr;
+
+pthread_t		t4_tid;
+struct task_par	t4_tp;
+pthread_attr_t	t4_attr;
 
 //--------------------------------------------------------------------------
 //FUNCTION DEFINITIONS
@@ -59,6 +93,7 @@ int main(int argc, char * argv[])
 
 	while(run)
 	{
+		run_task='m';
 		analysis_key();
 	}
 
@@ -90,6 +125,8 @@ void setup_grafic(int x, int y, char s[])
 
 void setup(void)
 {
+char s[30];
+
 	allegro_init();
 	install_keyboard();
 
@@ -98,6 +135,9 @@ void setup(void)
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
 
 	clear_to_color(screen, 7);
+
+	clock_gettime(CLOCK_MONOTONIC, &zero_time);
+	run_task='m';
 
 	//istruzioni
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 0, -1);
@@ -109,6 +149,10 @@ void setup(void)
 
 	textout_ex(screen, font, "PRESS KEY ESC TO EXIT", (INSTR_X+10), (INSTR_Y+10), 0, -1);
 
+	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale);
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
+	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 0);
+
 	//grafici
 	ORIGIN_PIP_Y=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
 	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
@@ -118,6 +162,20 @@ void setup(void)
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload");
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP");
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload");
+
+	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
+	draw_grafic_task_base();
+
+	//create grafic task
+	grafic_tp.arg=0;
+	grafic_tp.period=time_scale;
+	grafic_tp.deadline=10;
+	grafic_tp.priority=90;
+	grafic_tp.dmiss=0;
+
+	pthread_attr_init(&grafic_attr);
+	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
+
 }
 
 //--------------------------------------------------------------------------
@@ -140,15 +198,67 @@ int k;
 void analysis_key(void)
 {
 char	scan, ascii;
+bool	keyp=FALSE;
 
-	get_keycodes(&scan, &ascii);
+	keyp=keypressed();
+	if(keyp){
+		get_keycodes(&scan, &ascii);
 
-	switch(scan)
-	{
-		case KEY_ESC:
-			run=FALSE;
-			break;
-		default:
-			break;
+		switch(scan)
+		{
+			case KEY_ESC:
+				run=FALSE;
+				break;
+			default:
+				break;
+		}
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW GRAFIC TASK BASE (relativo asse x per ogni task)
+//--------------------------------------------------------------------------
+
+void draw_grafic_task_base()
+{
+int	i=0;
+
+	for(i=0; i<=N_TASK; i++){
+		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIP_Y-(i*(H_TASK+10))),0);
+		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIPW_Y-(i*(H_TASK+10))),0);
+		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
+		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCPW_Y-(i*(H_TASK+10))),0);
+	}
+}
+
+//--------------------------------------------------------------------------
+//GRAFIC TASK
+//--------------------------------------------------------------------------
+
+void * grafic_task(void * arg)
+{
+struct timespec	at;
+double			ms;
+
+	x=0;
+	while(1){
+		if(pip){
+			switch(run_task)
+			{
+				case 'm':
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					time_sub_ms(at, zero_time, &ms);
+					x=(ms/time_scale);
+					rectfill(screen, (ORIGIN_GRAFIC_X+x), ORIGIN_PIP_Y, (ORIGIN_GRAFIC_X+x+5), (ORIGIN_PIP_Y-H_TASK), 10);
+					//x++;
+					break;
+				default:
+					break;
+			}
+		}
+		//pcp case
+		else{
+
+		}
 	}
 }
