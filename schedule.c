@@ -42,13 +42,14 @@ void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 void draw_grafic_task_base(void);
 void * grafic_task(void * arg);
+void * t_task(void * arg);
 
 //--------------------------------------------------------------------------
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
 struct timespec	zero_time;
-int				time_scale=500;
+int				time_scale=250;
 int				x=0;
 
 bool			run=TRUE;
@@ -176,6 +177,16 @@ char s[30];
 	pthread_attr_init(&grafic_attr);
 	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
 
+	//create task 1
+	t1_tp.arg=0;
+	t1_tp.period=1000;
+	t1_tp.deadline=1000;
+	t1_tp.priority=70;
+	t1_tp.dmiss=0;
+
+	pthread_attr_init(&t1_attr);
+	pthread_create(&t1_tid, &t1_attr, t_task, &t1_tp);
+
 }
 
 //--------------------------------------------------------------------------
@@ -237,20 +248,28 @@ int	i=0;
 
 void * grafic_task(void * arg)
 {
-struct timespec	at;
+struct timespec	at,t;
 double			ms;
 
 	x=0;
 	while(1){
+		time_add_ms(&t, time_scale+1);
 		if(pip){
 			switch(run_task)
 			{
 				case 'm':
 					clock_gettime(CLOCK_MONOTONIC, &at);
 					time_sub_ms(at, zero_time, &ms);
-					x=(ms/time_scale);
-					rectfill(screen, (ORIGIN_GRAFIC_X+x), ORIGIN_PIP_Y, (ORIGIN_GRAFIC_X+x+5), (ORIGIN_PIP_Y-H_TASK), 10);
-					//x++;
+					//x=(ms/time_scale);
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), ORIGIN_PIP_Y, (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-H_TASK), 10);
+					clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+					break;
+				case '1':
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					time_sub_ms(at, zero_time, &ms);
+					//x=(ms/time_scale);
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(H_TASK+10)), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK+10)-H_TASK), 10);
+					clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 					break;
 				default:
 					break;
@@ -260,5 +279,17 @@ double			ms;
 		else{
 
 		}
+		x++;
+	}
+}
+
+//--------------------------------------------------------------------------
+//GENERIC TASK
+//--------------------------------------------------------------------------
+
+void * t_task(void * arg)
+{
+	while(1){
+		run_task='1';
 	}
 }
