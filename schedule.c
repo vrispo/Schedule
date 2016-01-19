@@ -54,6 +54,7 @@ int				x=0;
 
 bool			run=TRUE;
 int				run_task;
+int				arg;
 
 bool			pip=TRUE;
 
@@ -183,9 +184,9 @@ char s[30];
 	t1_tp.deadline=1000;
 	t1_tp.priority=70;
 	t1_tp.dmiss=0;
-	int arg=1;
+	arg=1;
 	pthread_attr_init(&t1_attr);
-	pthread_create(&t1_tid, &t1_attr, t_task, &arg);
+	pthread_create(&t1_tid, &t1_attr, t_task, (void*)&arg);
 
 }
 
@@ -321,12 +322,10 @@ double			ms;
 void * t_task(void * arg)
 {
 int		*i;
-char	s[30];
 
 	i=(int*)arg;
-	sprintf(s, "arg = %d ", *i);
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 0, -1);
+
 	while(1){
-		run_task=1;
+		run_task=*i;
 	}
 }
