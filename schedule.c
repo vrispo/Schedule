@@ -40,7 +40,7 @@ void setup (void);
 void setup_grafic(int x, int y, char s[]);
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
-void draw_grafic_task_base(void);
+void draw_grafic_task_base(char g);
 void * grafic_task(void * arg);
 void * t_task(void * arg);
 
@@ -49,11 +49,11 @@ void * t_task(void * arg);
 //--------------------------------------------------------------------------
 
 struct timespec	zero_time;
-int				time_scale=250;
+int				time_scale=150;
 int				x=0;
 
 bool			run=TRUE;
-char			run_task;
+int				run_task;
 
 bool			pip=TRUE;
 
@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
 
 	while(run)
 	{
-		run_task='m';
+		run_task=0;
 		analysis_key();
 	}
 
@@ -138,7 +138,7 @@ char s[30];
 	clear_to_color(screen, 7);
 
 	clock_gettime(CLOCK_MONOTONIC, &zero_time);
-	run_task='m';
+	run_task=0;
 
 	//istruzioni
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 0, -1);
@@ -165,7 +165,7 @@ char s[30];
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload");
 
 	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
-	draw_grafic_task_base();
+	draw_grafic_task_base('a');
 
 	//create grafic task
 	grafic_tp.arg=0;
@@ -183,9 +183,9 @@ char s[30];
 	t1_tp.deadline=1000;
 	t1_tp.priority=70;
 	t1_tp.dmiss=0;
-
+	int arg=1;
 	pthread_attr_init(&t1_attr);
-	pthread_create(&t1_tid, &t1_attr, t_task, &t1_tp);
+	pthread_create(&t1_tid, &t1_attr, t_task, &arg);
 
 }
 
@@ -230,15 +230,37 @@ bool	keyp=FALSE;
 //DRAW GRAFIC TASK BASE (relativo asse x per ogni task)
 //--------------------------------------------------------------------------
 
-void draw_grafic_task_base()
+void draw_grafic_task_base(char g)
 {
 int	i=0;
 
-	for(i=0; i<=N_TASK; i++){
-		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIP_Y-(i*(H_TASK+10))),0);
-		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIPW_Y-(i*(H_TASK+10))),0);
-		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
-		line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCPW_Y-(i*(H_TASK+10))),0);
+	switch(g){
+		case 'a':
+			for(i=0; i<=N_TASK; i++){
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIP_Y-(i*(H_TASK+10))),0);
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIPW_Y-(i*(H_TASK+10))),0);
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCPW_Y-(i*(H_TASK+10))),0);
+			}
+			break;
+		case 'i':
+			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PIP_Y-GRAFIC_H), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PIPW_Y+5), 7);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP");
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload");
+			for(i=0; i<=N_TASK; i++){
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIP_Y-(i*(H_TASK+10))),0);
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIPW_Y-(i*(H_TASK+10))),0);
+			}
+			break;
+		case 'c':
+			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PCP_Y-GRAFIC_H), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PCPW_Y+5), 7);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP");
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload");
+			for(i=0; i<=N_TASK; i++){
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
+				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCPW_Y-(i*(H_TASK+10))),0);
+			}
+			break;
 	}
 }
 
@@ -253,18 +275,19 @@ double			ms;
 
 	x=0;
 	while(1){
-		time_add_ms(&t, time_scale+1);
+		t.tv_sec=0;
+		t.tv_nsec=time_scale*1000000;
 		if(pip){
 			switch(run_task)
 			{
-				case 'm':
+				case 0:
 					clock_gettime(CLOCK_MONOTONIC, &at);
 					time_sub_ms(at, zero_time, &ms);
 					//x=(ms/time_scale);
 					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), ORIGIN_PIP_Y, (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-H_TASK), 10);
 					clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 					break;
-				case '1':
+				case 1:
 					clock_gettime(CLOCK_MONOTONIC, &at);
 					time_sub_ms(at, zero_time, &ms);
 					//x=(ms/time_scale);
@@ -274,12 +297,20 @@ double			ms;
 				default:
 					break;
 			}
+			x++;
+			if((x*5)>=GRAFIC_W){
+				x=0;
+				draw_grafic_task_base('i');
+			}
 		}
 		//pcp case
 		else{
-
+			x++;
+			if((x*5)>=GRAFIC_W){
+				x=0;
+				draw_grafic_task_base('i');
+			}
 		}
-		x++;
 	}
 }
 
@@ -289,7 +320,13 @@ double			ms;
 
 void * t_task(void * arg)
 {
+int		*i;
+char	s[30];
+
+	i=(int*)arg;
+	sprintf(s, "arg = %d ", *i);
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 0, -1);
 	while(1){
-		run_task='1';
+		run_task=1;
 	}
 }
