@@ -52,3 +52,14 @@ int	s,ns;
 
 	*ms = fabs(ns * 0.000001);
 }
+
+void time_tms_to_ms(struct timespec t1, double* ms)
+{
+	int	s,ns;
+
+		s=t1.tv_sec;
+		ns=t1.tv_nsec;
+		ns+=(s* 1000000000);
+
+		*ms = fabs(ns * 0.000001);
+}

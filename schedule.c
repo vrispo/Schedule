@@ -49,7 +49,7 @@ void * t_task(void * arg);
 //--------------------------------------------------------------------------
 
 struct timespec	zero_time;
-int				time_scale=150;
+int				time_scale=100;
 int				x=0;
 
 bool			run=TRUE;
@@ -183,7 +183,7 @@ char s[30];
 
 	//create task 1
 	t1_tp.arg=0;
-	t1_tp.period=1000;
+	t1_tp.period=1500;
 	t1_tp.deadline=1000;
 	t1_tp.priority=70;
 	t1_tp.dmiss=0;
@@ -193,7 +193,7 @@ char s[30];
 
 	//create task 2
 	t2_tp.arg=0;
-	t2_tp.period=500;
+	t2_tp.period=1500;
 	t2_tp.deadline=500;
 	t2_tp.priority=60;
 	t2_tp.dmiss=0;
@@ -203,8 +203,8 @@ char s[30];
 
 	//create task 3
 	t3_tp.arg=0;
-	t3_tp.period=600;
-	t3_tp.deadline=600;
+	t3_tp.period=1500;
+	t3_tp.deadline=800;
 	t3_tp.priority=50;
 	t3_tp.dmiss=0;
 	arg3=3;
@@ -213,7 +213,7 @@ char s[30];
 
 	//create task 4
 	t4_tp.arg=0;
-	t4_tp.period=700;
+	t4_tp.period=1500;
 	t4_tp.deadline=700;
 	t4_tp.priority=40;
 	t4_tp.dmiss=0;
@@ -268,7 +268,7 @@ bool	keyp=FALSE;
 void draw_grafic_task_base(char g)
 {
 int	i=0, j=0;
-double xd=0;
+double xd;
 struct timespec at;
 
 	clock_gettime(CLOCK_MONOTONIC, &at);
@@ -280,33 +280,38 @@ struct timespec at;
 				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
 				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCPW_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCPW_Y-(i*(H_TASK+10))),0);
 			}
-			for(j=0; xd<GRAFIC_W; j++){
-				xd+=(t1_tp.deadline/time_scale)*5;
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))-H_TASK),12);
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))-H_TASK),12);
-			}
+
 			xd=0;
 			for(j=0; xd<GRAFIC_W; j++){
-				xd+=(t2_tp.deadline/time_scale)*5;
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))-H_TASK),12);
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))-H_TASK),12);
+				xd=((t1_tp.deadline+(j*t1_tp.period))/time_scale)*5;
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))-H_TASK-2),12);
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))-H_TASK-2),12);
 			}
+
 			xd=0;
 			for(j=0; xd<GRAFIC_W; j++){
-				xd+=(t3_tp.deadline/time_scale)*5;
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))-H_TASK),12);
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))-H_TASK),12);
+				xd=((t2_tp.deadline+(j*t2_tp.period))/time_scale)*5;
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))-H_TASK-2),12);
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))-H_TASK-2),12);
 			}
+
 			xd=0;
 			for(j=0; xd<GRAFIC_W; j++){
-				xd+=(t4_tp.deadline/time_scale)*5;
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))-H_TASK),12);
-				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))-H_TASK),12);
+				xd=((t3_tp.deadline+(j*t3_tp.period))/time_scale)*5;
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))-H_TASK-2),12);
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))-H_TASK-2),12);
+			}
+
+			xd=0;
+			for(j=0; xd<GRAFIC_W; j++){
+				xd=((t4_tp.deadline+(j*t4_tp.period))/time_scale)*5;
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))-H_TASK-2),12);
+				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))-H_TASK-2),12);
 			}
 			break;
 		case 'i':
 			//cancella e ridisegna i grafici pip
-			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PIP_Y-GRAFIC_H), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PIPW_Y+5), 7);
+			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PIP_Y-GRAFIC_H-2), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PIPW_Y+5), 7);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP");
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload");
 			for(i=0; i<=N_TASK; i++){
@@ -318,28 +323,35 @@ struct timespec at;
 			xd=(xd/time_scale)*5;
 			for(j=0; xd<GRAFIC_W; j++){
 				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))-H_TASK),12);
-				xd+=(t1_tp.deadline/time_scale)*5;
+				//xd+=(t1_tp.deadline/time_scale)*5;
+				time_sub_ms(t1_tp.at, at, &xd);
+				xd=((xd+t1_tp.deadline+(j*t1_tp.period))/time_scale)*5;
 			}
 
 			time_sub_ms(t2_tp.dl, at, &xd);
 			xd=(xd/time_scale)*5;
 			for(j=0; xd<GRAFIC_W; j++){
 				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))-H_TASK),12);
-				xd+=(t2_tp.deadline/time_scale)*5;
+				time_sub_ms(t2_tp.at, at, &xd);
+				xd=((xd+t2_tp.deadline+(j*t2_tp.period))/time_scale)*5;
 			}
 
 			time_sub_ms(t3_tp.dl, at, &xd);
 			xd=(xd/time_scale)*5;
 			for(j=0; xd<GRAFIC_W; j++){
 				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))-H_TASK),12);
-				xd+=(t3_tp.deadline/time_scale)*5;
+				//xd+=(t3_tp.deadline/time_scale)*5;
+				time_sub_ms(t3_tp.at, at, &xd);
+				xd=((xd+t3_tp.deadline+(j*t3_tp.period))/time_scale)*5;
 			}
 
 			time_sub_ms(t4_tp.dl, at, &xd);
 			xd=(xd/time_scale)*5;
 			for(j=0; xd<GRAFIC_W; j++){
 				line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))-H_TASK),12);
-				xd+=(t4_tp.deadline/time_scale)*5;
+				//xd+=(t4_tp.deadline/time_scale)*5;
+				time_sub_ms(t4_tp.at, at, &xd);
+				xd=((xd+t4_tp.deadline+(j*t4_tp.period))/time_scale)*5;
 			}
 
 			break;
