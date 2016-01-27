@@ -128,6 +128,8 @@ void setup_grafic(int x, int y, char s[], bool ng)
 int		i = 0;
 char	l[20];
 
+	rectfill(screen, (x-5), (y-GRAFIC_H-2), (x+GRAFIC_W), (y+5), 7);
+
 	//asse y
 	line(screen, x, (y-GRAFIC_H), x, y, 0);
 	line(screen, x, (y-GRAFIC_H), (x-5), (y-GRAFIC_H+5), 0);
@@ -294,8 +296,6 @@ struct timespec at;
 			draw_deadline_pip();
 			break;
 		case 'i':
-			//cancella e ridisegna i grafici pip
-			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PIP_Y-GRAFIC_H-2), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PIPW_Y+5), 7);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
 
@@ -303,8 +303,6 @@ struct timespec at;
 			draw_deadline_pip();
 			break;
 		case 'c':
-			//cancella e ridisegna i grafici pcp
-			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PCP_Y-GRAFIC_H), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PCPW_Y+5), 7);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
 
