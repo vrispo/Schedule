@@ -37,7 +37,7 @@
 //--------------------------------------------------------------------------
 
 void setup (void);
-void setup_grafic(int x, int y, char s[]);
+void setup_grafic(int x, int y, char s[], bool ng);
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 void draw_grafic_task_base(char g);
@@ -55,7 +55,7 @@ void draw_activation_pcp(void);
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
-struct timespec	zero_time;
+//struct 			timespec zero_time;
 int				time_scale=50;
 int				x=0;
 int				task[5];
@@ -106,7 +106,6 @@ int 	delta = time_scale;
 	t.tv_nsec = delta*1000000;
 	setup();
 
-
 	while(run)
 	{
 		run_task=0;
@@ -124,8 +123,11 @@ int 	delta = time_scale;
 //SETUP GRAFIC
 //--------------------------------------------------------------------------
 
-void setup_grafic(int x, int y, char s[])
+void setup_grafic(int x, int y, char s[], bool ng)
 {
+int		i = 0;
+char	l[20];
+
 	//asse y
 	line(screen, x, (y-GRAFIC_H), x, y, 0);
 	line(screen, x, (y-GRAFIC_H), (x-5), (y-GRAFIC_H+5), 0);
@@ -136,6 +138,15 @@ void setup_grafic(int x, int y, char s[])
 	line(screen, (x+GRAFIC_W-5), (y-5), (x+GRAFIC_W), y, 0);
 	line(screen, (x+GRAFIC_W-5), (y+5), (x+GRAFIC_W), y, 0);
 	textout_ex(screen, font, "t", (x+GRAFIC_W+5), (y+5), 0, -1);
+
+	if(ng){
+		for(i=0; i<=N_TASK; i++){
+			sprintf(l,"%i",i);
+			textout_ex(screen, font, l, (x-10), (y-(i*(H_TASK+10))),0, -1);
+			line(screen, x,(y-(i*(H_TASK+10))),(x+GRAFIC_W),(y-(i*(H_TASK+10))),0);
+		}
+	}
+
 }
 
 //--------------------------------------------------------------------------
@@ -150,12 +161,10 @@ char s[30];
 	install_keyboard();
 
 	set_color_depth(8);
-
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
-
 	clear_to_color(screen, 7);
 
-	clock_gettime(CLOCK_MONOTONIC, &zero_time);
+	//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 	run_task=0;
 
 	//istruzioni
@@ -171,19 +180,6 @@ char s[30];
 	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale);
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
 	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 0);
-
-	//grafici
-	ORIGIN_PIP_Y=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
-	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
-	ORIGIN_PCP_Y=ORIGIN_PIPW_Y+SPACE+GRAFIC_H;
-	ORIGIN_PCPW_Y=ORIGIN_PCP_Y+SPACE+GRAFIC_H;
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP");
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload");
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP");
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload");
-
-	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
-	//draw_grafic_task_base('a');
 
 	//create grafic task
 	grafic_tp.arg=0;
@@ -231,6 +227,12 @@ char s[30];
 	pthread_attr_init(&t4_attr);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
+	//grafici
+	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
+	ORIGIN_PIP_Y=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
+	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
+	ORIGIN_PCP_Y=ORIGIN_PIPW_Y+SPACE+GRAFIC_H;
+	ORIGIN_PCPW_Y=ORIGIN_PCP_Y+SPACE+GRAFIC_H;
 	draw_grafic_task_base('a');
 }
 
@@ -277,19 +279,15 @@ bool	keyp=FALSE;
 
 void draw_grafic_task_base(char g)
 {
-int				i=0;
 struct timespec at;
-char			s[20];
 
 	clock_gettime(CLOCK_MONOTONIC, &at);
 	switch(g){
 		case 'a':
-			for(i=0; i<=N_TASK; i++){
-				sprintf(s,"%i",i);
-				textout_ex(screen, font, s, (ORIGIN_GRAFIC_X-10), (ORIGIN_PIP_Y-(i*(H_TASK+10))),0, -1);
-				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIP_Y-(i*(H_TASK+10))),0);
-				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
-			}
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
 			draw_activation_pip();
 			draw_activation_pcp();
 			draw_deadline_pcp();
@@ -298,22 +296,18 @@ char			s[20];
 		case 'i':
 			//cancella e ridisegna i grafici pip
 			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PIP_Y-GRAFIC_H-2), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PIPW_Y+5), 7);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP");
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload");
-			for(i=0; i<=N_TASK; i++){
-				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PIP_Y-(i*(H_TASK+10))),0);
-			}
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+
 			draw_activation_pip();
 			draw_deadline_pip();
 			break;
 		case 'c':
 			//cancella e ridisegna i grafici pcp
 			rectfill(screen, (ORIGIN_GRAFIC_X-5), (ORIGIN_PCP_Y-GRAFIC_H), (ORIGIN_GRAFIC_X+GRAFIC_W), (ORIGIN_PCPW_Y+5), 7);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP");
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload");
-			for(i=0; i<=N_TASK; i++){
-				line(screen, ORIGIN_GRAFIC_X,(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+GRAFIC_W),(ORIGIN_PCP_Y-(i*(H_TASK+10))),0);
-			}
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+
 			draw_activation_pcp();
 			draw_deadline_pcp();
 			break;
@@ -327,39 +321,35 @@ char			s[20];
 void * grafic_task(void * arg)
 {
 struct timespec	at;
-//struct timespec	t;
 int				i=0;
-double			ms;
+//double			ms;
 
 	set_period(&grafic_tp);
 
 	x=0;
 	while(1){
-		printf("gt");
-		//t.tv_sec=0;
-		//t.tv_nsec=time_scale*1000000;
 		if(pip){
 			clock_gettime(CLOCK_MONOTONIC, &at);
-			time_sub_ms(at, zero_time, &ms);
+			//time_sub_ms(at, zero_time, &ms);
 			//x=(ms/time_scale);
 			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-H_TASK-(run_task*(H_TASK+10))), 10);
-			//clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			x++;
 			if((x*5)>=GRAFIC_W){
 				x=0;
+				//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 				draw_grafic_task_base('i');
 			}
 		}
 		//pcp case
 		else{
 			clock_gettime(CLOCK_MONOTONIC, &at);
-			time_sub_ms(at, zero_time, &ms);
+			//time_sub_ms(at, zero_time, &ms);
 			//x=(ms/time_scale);
 			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-H_TASK-(run_task*(H_TASK+10))), 10);
-			//clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			x++;
 			if((x*5)>=GRAFIC_W){
 				x=0;
+				//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 				draw_grafic_task_base('c');
 			}
 		}
