@@ -46,10 +46,10 @@ void * t_task_1(void * arg);
 void * t_task_2(void * arg);
 void * t_task_3(void * arg);
 void * t_task_4(void * arg);
-void draw_deadline_pip(void);
-void draw_deadline_pcp(void);
-void draw_activation_pip(void);
-void draw_activation_pcp(void);
+void draw_deadline_pip(struct task_par tp, int i);
+void draw_deadline_pcp(struct task_par tp, int i);
+void draw_activation_pip(struct task_par tp, int i);
+void draw_activation_pcp(struct task_par tp, int i);
 
 //--------------------------------------------------------------------------
 //GLOBAL VARIABLES
@@ -235,7 +235,8 @@ char s[30];
 	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
 	ORIGIN_PCP_Y=ORIGIN_PIPW_Y+SPACE+GRAFIC_H;
 	ORIGIN_PCPW_Y=ORIGIN_PCP_Y+SPACE+GRAFIC_H;
-	draw_grafic_task_base('a');
+	draw_grafic_task_base('i');
+	draw_grafic_task_base('c');
 }
 
 //--------------------------------------------------------------------------
@@ -285,29 +286,31 @@ struct timespec at;
 
 	clock_gettime(CLOCK_MONOTONIC, &at);
 	switch(g){
-		case 'a':
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
-			draw_activation_pip();
-			draw_activation_pcp();
-			draw_deadline_pcp();
-			draw_deadline_pip();
-			break;
 		case 'i':
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
 
-			draw_activation_pip();
-			draw_deadline_pip();
+			draw_activation_pip(t1_tp, 1);
+			draw_activation_pip(t2_tp, 2);
+			draw_activation_pip(t3_tp, 3);
+			draw_activation_pip(t4_tp, 4);
+			draw_deadline_pip(t1_tp, 1);
+			draw_deadline_pip(t2_tp, 2);
+			draw_deadline_pip(t3_tp, 3);
+			draw_deadline_pip(t4_tp, 4);
 			break;
 		case 'c':
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
 			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
 
-			draw_activation_pcp();
-			draw_deadline_pcp();
+			draw_activation_pcp(t1_tp, 1);
+			draw_activation_pcp(t2_tp, 2);
+			draw_activation_pcp(t3_tp, 3);
+			draw_activation_pcp(t4_tp, 4);
+			draw_deadline_pcp(t1_tp, 1);
+			draw_deadline_pcp(t2_tp, 2);
+			draw_deadline_pcp(t3_tp, 3);
+			draw_deadline_pcp(t4_tp, 4);
 			break;
 	}
 }
@@ -437,10 +440,54 @@ struct task_par	*tp;
 }
 
 //--------------------------------------------------------------------------
-//DRAW DEADLINE OF A TASK
+//DRAW DEADLINE OF A TASK IN PIP GRAFIC
 //--------------------------------------------------------------------------
 
-void draw_deadline_pip(void)
+void draw_deadline_pip(struct task_par tp, int i)
+{
+int				j=0;
+double			xd,nat;
+struct timespec	at;
+
+	clock_gettime(CLOCK_MONOTONIC, &at);
+
+	xd=0;
+	time_sub_ms(tp.dl, at, &xd);
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((xd/time_scale)*5);
+	for(j=0; xd<GRAFIC_W; j++){
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),12);
+		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW DEADLINE OF A TASK IN PCP GRAFIC
+//--------------------------------------------------------------------------
+
+void draw_deadline_pcp(struct task_par tp, int i)
+{
+int				j=0;
+double			xd,nat;
+struct timespec	at;
+
+	clock_gettime(CLOCK_MONOTONIC, &at);
+
+	xd=0;
+	time_sub_ms(tp.dl, at, &xd);
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((xd/time_scale)*5);
+	for(j=0; xd<GRAFIC_W; j++){
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),12);
+		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW ACTIVATION OF A TASK IN PIP GRAFIC
+//--------------------------------------------------------------------------
+
+void draw_activation_pip(struct task_par tp, int i)
 {
 int				j=0;
 double			xd,nat;
@@ -450,145 +497,19 @@ struct timespec	at;
 
 	//disegna le varie deadline per ogni task nel grafico pip
 	xd=0;
-	time_sub_ms(t1_tp.dl, at, &xd);
-	time_sub_ms(t1_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((nat/time_scale)*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t1_tp.deadline+(j*t1_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t2_tp.dl, at, &xd);
-	time_sub_ms(t2_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t2_tp.deadline+(j*t2_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t3_tp.dl, at, &xd);
-	time_sub_ms(t3_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t3_tp.deadline+(j*t3_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t4_tp.dl, at, &xd);
-	time_sub_ms(t4_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t4_tp.deadline+(j*t4_tp.period))/time_scale)*5;
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),14);
+		xd=x+(((nat+(j*tp.period))/time_scale)*5);
 	}
 }
-
-
-//--------------------------------------------------------------------------
-//DRAW DEADLINE OF A TASK PCP
-//--------------------------------------------------------------------------
-
-void draw_deadline_pcp(void)
-{
-int				j=0;
-double			xd,nat;
-struct timespec	at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-
-	//disegna le varie deadline per ogni task nel grafico pcp
-	xd=0;
-	time_sub_ms(t1_tp.dl, at, &xd);
-	time_sub_ms(t1_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t1_tp.deadline+(j*t1_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t2_tp.dl, at, &xd);
-	time_sub_ms(t2_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t2_tp.deadline+(j*t2_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t3_tp.dl, at, &xd);
-	time_sub_ms(t3_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t3_tp.deadline+(j*t3_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t4_tp.dl, at, &xd);
-	time_sub_ms(t4_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))-H_TASK),12);
-		xd=((nat+t4_tp.deadline+(j*t4_tp.period))/time_scale)*5;
-	}
-}
-
-//--------------------------------------------------------------------------
-//DRAW ACTIVATION OF A TASK
-//--------------------------------------------------------------------------
-
-void draw_activation_pip(void)
-{
-int				j=0;
-double			xd,nat;
-struct timespec	at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-
-	//disegna le varie deadline per ogni task nel grafico pip
-	xd=0;
-	time_sub_ms(t1_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(1*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t1_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t2_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(2*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t2_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t3_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(3*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t3_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t4_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(4*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t4_tp.period))/time_scale)*5;
-	}
-}
-
 
 //--------------------------------------------------------------------------
 //DRAW ACTIVATION OF A TASK PCP
 //--------------------------------------------------------------------------
 
-void draw_activation_pcp(void)
+void draw_activation_pcp(struct task_par tp, int i)
 {
 int				j=0;
 double			xd,nat;
@@ -598,35 +519,10 @@ struct timespec	at;
 
 	//disegna le varie deadline per ogni task nel grafico pcp
 	xd=0;
-	time_sub_ms(t1_tp.at, at, &nat);
-	xd=(xd/time_scale)*5;
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((xd/time_scale)*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(1*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t1_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t2_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(2*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t2_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t3_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(3*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t3_tp.period))/time_scale)*5;
-	}
-
-	xd=0;
-	time_sub_ms(t4_tp.at, at, &nat);
-	xd=(nat/time_scale)*5;
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(4*(H_TASK+10))-H_TASK),14);
-		xd=((nat+(j*t4_tp.period))/time_scale)*5;
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),14);
+		xd=x+(((nat+(j*tp.period))/time_scale)*5);
 	}
 }
-
