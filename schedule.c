@@ -38,14 +38,20 @@
 
 void setup (void);
 void setup_grafic(int x, int y, char s[], bool ng);
+void draw_task_parameter(char g);
+
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
-void draw_grafic_task_base(char g);
+
+void create_pip_task(void);
+void create_pcp_task(void);
+
 void * grafic_task(void * arg);
 void * t_task_1(void * arg);
 void * t_task_2(void * arg);
 void * t_task_3(void * arg);
 void * t_task_4(void * arg);
+
 void draw_deadline_pip(struct task_par tp, int i);
 void draw_deadline_pcp(struct task_par tp, int i);
 void draw_activation_pip(struct task_par tp, int i);
@@ -100,7 +106,7 @@ pthread_attr_t	t4_attr;
 int main(int argc, char * argv[])
 {
 struct	timespec t;
-int 	delta = time_scale;
+int 	delta = time_scale+10;
 
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
@@ -120,7 +126,7 @@ int 	delta = time_scale;
 }
 
 //--------------------------------------------------------------------------
-//SETUP GRAFIC
+//DRAW EMPTY GRAFIC
 //--------------------------------------------------------------------------
 
 void setup_grafic(int x, int y, char s[], bool ng)
@@ -183,6 +189,17 @@ char s[30];
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
 	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 0);
 
+	//grafici
+	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
+	ORIGIN_PIP_Y=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
+	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
+	ORIGIN_PCP_Y=ORIGIN_PIPW_Y+SPACE+GRAFIC_H;
+	ORIGIN_PCPW_Y=ORIGIN_PCP_Y+SPACE+GRAFIC_H;
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+
 	//create grafic task
 	grafic_tp.arg=0;
 	grafic_tp.period=time_scale;
@@ -193,6 +210,22 @@ char s[30];
 	pthread_attr_init(&grafic_attr);
 	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
 
+	if(pip)
+		create_pip_task();
+	else
+		create_pcp_task();
+
+}
+
+//--------------------------------------------------------------------------
+//CREATE TASK PIP
+//--------------------------------------------------------------------------
+
+void create_pip_task(void)
+{
+struct	timespec t;
+int 	delta = 0;
+
 	//create task 1
 	t1_tp.arg=0;
 	t1_tp.period=1200;
@@ -201,6 +234,14 @@ char s[30];
 	t1_tp.dmiss=0;
 	pthread_attr_init(&t1_attr);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
+
+	draw_activation_pip(t1_tp, 1);
+	draw_deadline_pip(t1_tp, 1);
+
+	delta = 2*time_scale;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 2
 	t2_tp.arg=0;
@@ -211,6 +252,12 @@ char s[30];
 	pthread_attr_init(&t2_attr);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
+	draw_activation_pip(t2_tp, 2);
+	draw_deadline_pip(t2_tp, 2);
+
+	time_add_ms(&t, time_scale);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
 	//create task 3
 	t3_tp.arg=0;
 	t3_tp.period=1600;
@@ -219,6 +266,12 @@ char s[30];
 	t3_tp.dmiss=0;
 	pthread_attr_init(&t3_attr);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
+
+	draw_activation_pip(t3_tp, 3);
+	draw_deadline_pip(t3_tp, 3);
+
+	time_add_ms(&t, time_scale);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 4
 	t4_tp.arg=0;
@@ -229,14 +282,107 @@ char s[30];
 	pthread_attr_init(&t4_attr);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
-	//grafici
-	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
-	ORIGIN_PIP_Y=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
-	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
-	ORIGIN_PCP_Y=ORIGIN_PIPW_Y+SPACE+GRAFIC_H;
-	ORIGIN_PCPW_Y=ORIGIN_PCP_Y+SPACE+GRAFIC_H;
-	draw_grafic_task_base('i');
-	draw_grafic_task_base('c');
+	draw_activation_pip(t4_tp, 4);
+	draw_deadline_pip(t4_tp, 4);
+}
+
+//--------------------------------------------------------------------------
+//CREATE TASK PCP
+//--------------------------------------------------------------------------
+
+void create_pcp_task(void)
+{
+struct	timespec t;
+int 	delta = 0;
+
+	//create task 1
+	t1_tp.arg=0;
+	t1_tp.period=1200;
+	t1_tp.deadline=1000;
+	t1_tp.priority=60;
+	t1_tp.dmiss=0;
+	pthread_attr_init(&t1_attr);
+	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
+
+	draw_activation_pcp(t1_tp, 1);
+	draw_deadline_pcp(t1_tp, 1);
+
+	delta = 2*time_scale;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+	//create task 2
+	t2_tp.arg=0;
+	t2_tp.period=1400;
+	t2_tp.deadline=1200;
+	t2_tp.priority=70;
+	t2_tp.dmiss=0;
+	pthread_attr_init(&t2_attr);
+	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
+
+	draw_activation_pcp(t2_tp, 2);
+	draw_deadline_pcp(t2_tp, 2);
+
+	time_add_ms(&t, time_scale);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+	//create task 3
+	t3_tp.arg=0;
+	t3_tp.period=1600;
+	t3_tp.deadline=1400;
+	t3_tp.priority=80;
+	t3_tp.dmiss=0;
+	pthread_attr_init(&t3_attr);
+	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
+
+	draw_activation_pcp(t3_tp, 3);
+	draw_deadline_pcp(t3_tp, 3);
+
+	time_add_ms(&t, time_scale);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+	//create task 4
+	t4_tp.arg=0;
+	t4_tp.period=1800;
+	t4_tp.deadline=1600;
+	t4_tp.priority=90;
+	t4_tp.dmiss=0;
+	pthread_attr_init(&t4_attr);
+	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
+
+	draw_activation_pcp(t4_tp, 4);
+	draw_deadline_pcp(t4_tp, 4);
+}
+
+//--------------------------------------------------------------------------
+//DRAW PARAMETER TASK IN GRAFIC PIP OR PCP
+//--------------------------------------------------------------------------
+
+void draw_task_parameter(char g)
+{
+	switch(g){
+		case 'i':
+			draw_activation_pip(t1_tp, 1);
+			draw_activation_pip(t2_tp, 2);
+			draw_activation_pip(t3_tp, 3);
+			draw_activation_pip(t4_tp, 4);
+			draw_deadline_pip(t1_tp, 1);
+			draw_deadline_pip(t2_tp, 2);
+			draw_deadline_pip(t3_tp, 3);
+			draw_deadline_pip(t4_tp, 4);
+			break;
+		case 'c':
+			draw_activation_pcp(t1_tp, 1);
+			draw_activation_pcp(t2_tp, 2);
+			draw_activation_pcp(t3_tp, 3);
+			draw_activation_pcp(t4_tp, 4);
+			draw_deadline_pcp(t1_tp, 1);
+			draw_deadline_pcp(t2_tp, 2);
+			draw_deadline_pcp(t3_tp, 3);
+			draw_deadline_pcp(t4_tp, 4);
+			break;
+	}
 }
 
 //--------------------------------------------------------------------------
@@ -277,45 +423,6 @@ bool	keyp=FALSE;
 }
 
 //--------------------------------------------------------------------------
-//DRAW GRAFIC TASK BASE (relativo asse x per ogni task)
-//--------------------------------------------------------------------------
-
-void draw_grafic_task_base(char g)
-{
-struct timespec at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-	switch(g){
-		case 'i':
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
-
-			draw_activation_pip(t1_tp, 1);
-			draw_activation_pip(t2_tp, 2);
-			draw_activation_pip(t3_tp, 3);
-			draw_activation_pip(t4_tp, 4);
-			draw_deadline_pip(t1_tp, 1);
-			draw_deadline_pip(t2_tp, 2);
-			draw_deadline_pip(t3_tp, 3);
-			draw_deadline_pip(t4_tp, 4);
-			break;
-		case 'c':
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-			setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
-
-			draw_activation_pcp(t1_tp, 1);
-			draw_activation_pcp(t2_tp, 2);
-			draw_activation_pcp(t3_tp, 3);
-			draw_activation_pcp(t4_tp, 4);
-			draw_deadline_pcp(t1_tp, 1);
-			draw_deadline_pcp(t2_tp, 2);
-			draw_deadline_pcp(t3_tp, 3);
-			draw_deadline_pcp(t4_tp, 4);
-			break;
-	}
-}
-
-//--------------------------------------------------------------------------
 //GRAFIC TASK
 //--------------------------------------------------------------------------
 
@@ -338,7 +445,9 @@ int				i=0;
 			if((x*5)>=GRAFIC_W){
 				x=0;
 				//clock_gettime(CLOCK_MONOTONIC, &zero_time);
-				draw_grafic_task_base('i');
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+				draw_task_parameter('i');
 			}
 		}
 		//pcp case
@@ -351,7 +460,9 @@ int				i=0;
 			if((x*5)>=GRAFIC_W){
 				x=0;
 				//clock_gettime(CLOCK_MONOTONIC, &zero_time);
-				draw_grafic_task_base('c');
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+				draw_task_parameter('c');
 			}
 		}
 		printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
