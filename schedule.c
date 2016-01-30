@@ -26,6 +26,8 @@
 
 #define N_TASK			4
 
+#define _GNU_SOURCE
+
 //--------------------------------------------------------------------------
 //TYPE DEFINITIONS
 //--------------------------------------------------------------------------
@@ -43,8 +45,7 @@ void draw_task_parameter(char g);
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 
-void create_pip_task(void);
-void create_pcp_task(void);
+void create_task(void);
 
 void * grafic_task(void * arg);
 void * t_task_1(void * arg);
@@ -57,47 +58,61 @@ void draw_deadline_pcp(struct task_par tp, int i);
 void draw_activation_pip(struct task_par tp, int i);
 void draw_activation_pcp(struct task_par tp, int i);
 
+void create_mux_pip(void);
+void create_mux_pcp(void);
+
 //--------------------------------------------------------------------------
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
 //struct 			timespec zero_time;
-int				time_scale=50;
-int				x=0;
-int				task[5];
-int				nu=0;
+int					time_scale = 50;
+int					x = 0;
+int					task[5];
+int					nu = 0;
 
-bool			run=TRUE;
-int				run_task;
+bool				run = TRUE;
+int					run_task;
 
-bool			pip=TRUE;
+bool				pip = TRUE;
 
-int				ORIGIN_PIP_Y;
-int				ORIGIN_PIPW_Y;
-int				ORIGIN_PCP_Y;
-int				ORIGIN_PCPW_Y;
+int					ORIGIN_PIP_Y;
+int					ORIGIN_PIPW_Y;
+int					ORIGIN_PCP_Y;
+int					ORIGIN_PCPW_Y;
 
-int				H_TASK;
+int					H_TASK;
 
-pthread_t		grafic_tid;
-struct task_par	grafic_tp;
-pthread_attr_t	grafic_attr;
+pthread_t			grafic_tid;
+struct task_par		grafic_tp;
+pthread_attr_t		grafic_attr;
 
-pthread_t		t1_tid;
-struct task_par	t1_tp;
-pthread_attr_t	t1_attr;
+pthread_t			t1_tid;
+struct task_par		t1_tp;
+pthread_attr_t		t1_attr;
 
-pthread_t		t2_tid;
-struct task_par	t2_tp;
-pthread_attr_t	t2_attr;
+pthread_t			t2_tid;
+struct task_par		t2_tp;
+pthread_attr_t		t2_attr;
 
-pthread_t		t3_tid;
-struct task_par	t3_tp;
-pthread_attr_t	t3_attr;
+pthread_t			t3_tid;
+struct task_par		t3_tp;
+pthread_attr_t		t3_attr;
 
-pthread_t		t4_tid;
-struct task_par	t4_tp;
-pthread_attr_t	t4_attr;
+pthread_t			t4_tid;
+struct task_par		t4_tp;
+pthread_attr_t		t4_attr;
+
+int					max_prio_a=90;
+int					max_prio_b=90;
+
+pthread_mutex_t		mux_a_pip;
+pthread_mutex_t 	mux_b_pip;
+pthread_mutexattr_t	mattr_pip;
+
+pthread_mutex_t		mux_a_pcp;
+pthread_mutex_t 	mux_b_pcp;
+pthread_mutexattr_t	mattr_pcp;
 
 //--------------------------------------------------------------------------
 //FUNCTION DEFINITIONS
@@ -210,18 +225,16 @@ char s[30];
 	pthread_attr_init(&grafic_attr);
 	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
 
-	if(pip)
-		create_pip_task();
-	else
-		create_pcp_task();
-
+	create_mux_pip();
+	create_mux_pcp();
+	create_task();
 }
 
 //--------------------------------------------------------------------------
-//CREATE TASK PIP
+//CREATE TASK
 //--------------------------------------------------------------------------
 
-void create_pip_task(void)
+void create_task(void)
 {
 struct	timespec t;
 int 	delta = 0;
@@ -235,8 +248,14 @@ int 	delta = 0;
 	pthread_attr_init(&t1_attr);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
 
-	draw_activation_pip(t1_tp, 1);
-	draw_deadline_pip(t1_tp, 1);
+	if(pip){
+		draw_activation_pip(t1_tp, 1);
+		draw_deadline_pip(t1_tp, 1);
+	}
+	else{
+		draw_activation_pcp(t1_tp, 1);
+		draw_deadline_pcp(t1_tp, 1);
+	}
 
 	delta = 2*time_scale;
 	t.tv_sec = 0;
@@ -252,8 +271,14 @@ int 	delta = 0;
 	pthread_attr_init(&t2_attr);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
-	draw_activation_pip(t2_tp, 2);
-	draw_deadline_pip(t2_tp, 2);
+	if(pip){
+		draw_activation_pip(t2_tp, 2);
+		draw_deadline_pip(t2_tp, 2);
+	}
+	else{
+		draw_activation_pcp(t2_tp, 2);
+		draw_deadline_pcp(t2_tp, 2);
+	}
 
 	time_add_ms(&t, time_scale);
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
@@ -267,8 +292,14 @@ int 	delta = 0;
 	pthread_attr_init(&t3_attr);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
 
-	draw_activation_pip(t3_tp, 3);
-	draw_deadline_pip(t3_tp, 3);
+	if(pip){
+		draw_activation_pip(t3_tp, 3);
+		draw_deadline_pip(t3_tp, 3);
+	}
+	else{
+		draw_activation_pcp(t3_tp, 3);
+		draw_deadline_pcp(t3_tp, 3);
+	}
 
 	time_add_ms(&t, time_scale);
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
@@ -282,77 +313,42 @@ int 	delta = 0;
 	pthread_attr_init(&t4_attr);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
-	draw_activation_pip(t4_tp, 4);
-	draw_deadline_pip(t4_tp, 4);
+	if(pip){
+		draw_activation_pip(t4_tp, 4);
+		draw_deadline_pip(t4_tp, 4);
+	}
+	else{
+		draw_activation_pcp(t4_tp, 4);
+		draw_deadline_pcp(t4_tp, 4);
+	}
 }
 
 //--------------------------------------------------------------------------
-//CREATE TASK PCP
+//CREATE A PIP MUTEX
 //--------------------------------------------------------------------------
 
-void create_pcp_task(void)
+void create_mux_pip(void)
 {
-struct	timespec t;
-int 	delta = 0;
+	pthread_mutexattr_init(&mattr_pip);
+	pthread_mutexattr_setprotocol(&mattr_pip, PTHREAD_PRIO_INHERIT);
+	pthread_mutex_init(&mux_a_pip, &mattr_pip);
+	pthread_mutex_init(&mux_b_pip, &mattr_pip);
+	pthread_mutexattr_destroy(&mattr_pip);
+}
 
-	//create task 1
-	t1_tp.arg=0;
-	t1_tp.period=1200;
-	t1_tp.deadline=1000;
-	t1_tp.priority=60;
-	t1_tp.dmiss=0;
-	pthread_attr_init(&t1_attr);
-	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
+//--------------------------------------------------------------------------
+//CREATE A PCP MUTEX
+//--------------------------------------------------------------------------
 
-	draw_activation_pcp(t1_tp, 1);
-	draw_deadline_pcp(t1_tp, 1);
-
-	delta = 2*time_scale;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
-
-	//create task 2
-	t2_tp.arg=0;
-	t2_tp.period=1400;
-	t2_tp.deadline=1200;
-	t2_tp.priority=70;
-	t2_tp.dmiss=0;
-	pthread_attr_init(&t2_attr);
-	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
-
-	draw_activation_pcp(t2_tp, 2);
-	draw_deadline_pcp(t2_tp, 2);
-
-	time_add_ms(&t, time_scale);
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
-
-	//create task 3
-	t3_tp.arg=0;
-	t3_tp.period=1600;
-	t3_tp.deadline=1400;
-	t3_tp.priority=80;
-	t3_tp.dmiss=0;
-	pthread_attr_init(&t3_attr);
-	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
-
-	draw_activation_pcp(t3_tp, 3);
-	draw_deadline_pcp(t3_tp, 3);
-
-	time_add_ms(&t, time_scale);
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
-
-	//create task 4
-	t4_tp.arg=0;
-	t4_tp.period=1800;
-	t4_tp.deadline=1600;
-	t4_tp.priority=90;
-	t4_tp.dmiss=0;
-	pthread_attr_init(&t4_attr);
-	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
-
-	draw_activation_pcp(t4_tp, 4);
-	draw_deadline_pcp(t4_tp, 4);
+void create_mux_pcp(void)
+{
+	pthread_mutexattr_init(&mattr_pcp);
+	pthread_mutexattr_setprotocol(&mattr_pcp, PTHREAD_PRIO_PROTECT);
+	pthread_mutexattr_setprioceiling(&mattr_pcp, max_prio_a);
+	pthread_mutex_init(&mux_a_pcp, &mattr_pcp);
+	pthread_mutexattr_setprioceiling(&mattr_pcp, max_prio_b);
+	pthread_mutex_init(&mux_b_pcp, &mattr_pcp);
+	pthread_mutexattr_destroy(&mattr_pip);
 }
 
 //--------------------------------------------------------------------------
