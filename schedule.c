@@ -103,8 +103,10 @@ pthread_t			t4_tid;
 struct task_par		t4_tp;
 pthread_attr_t		t4_attr;
 
-int					max_prio_a=90;
-int					max_prio_b=90;
+int					max_prio_a = 90;
+int					max_prio_b = 70;
+int					a = 0;
+int					b = 0;
 
 pthread_mutex_t		mux_a_pip;
 pthread_mutex_t 	mux_b_pip;
@@ -203,6 +205,16 @@ char s[30];
 	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale);
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
 	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 0);
+
+	sprintf(s, "possesso risorsa a: ");
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 0, -1);
+	rectfill(screen, (INSTR_X+165), (INSTR_Y+32.5), (INSTR_X+170), (INSTR_Y+37.5), 1);
+	sprintf(s, "possesso risorsa b: ");
+	textout_ex(screen, font, s, (INSTR_X+180), (INSTR_Y+30), 0, -1);
+	rectfill(screen, (INSTR_X+335), (INSTR_Y+32.5), (INSTR_X+340), (INSTR_Y+37.5), 9);
+	sprintf(s, "possesso risorsa a e b: ");
+	textout_ex(screen, font, s, (INSTR_X+350), (INSTR_Y+30), 0, -1);
+	rectfill(screen, (INSTR_X+540), (INSTR_Y+32.5), (INSTR_X+545), (INSTR_Y+37.5), 13);
 
 	//grafici
 	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
@@ -426,6 +438,7 @@ void * grafic_task(void * arg)
 {
 struct timespec	at;
 int				i=0;
+int				col=10;
 //double			ms;
 
 	set_period(&grafic_tp);
@@ -436,7 +449,22 @@ int				i=0;
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			//time_sub_ms(at, zero_time, &ms);
 			//x=(ms/time_scale);
-			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-H_TASK-(run_task*(H_TASK+10))), 10);
+			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+			//se entrambi dello stesso processo
+			if((a!=0)&(b==a)){
+				col = 13;
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+			}
+			//se a di un processo
+			if((a!=0)&(b!=a)){
+				col = 1;
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+			}
+			//se b di un processo
+			if((b!=0)&(b!=a)){
+				col = 9;
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
+			}
 			x++;
 			if((x*5)>=GRAFIC_W){
 				x=0;
@@ -451,7 +479,22 @@ int				i=0;
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			//time_sub_ms(at, zero_time, &ms);
 			//x=(ms/time_scale);
-			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-H_TASK-(run_task*(H_TASK+10))), 10);
+			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+			//se entrambi dello stesso processo
+			if((a!=0)&(b==a)){
+				col = 13;
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+			}
+			//se a di un processo
+			if((a!=0)&(b!=a)){
+				col = 1;
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+			}
+			//se b di un processo
+			if((b!=0)&(b!=a)){
+				col = 9;
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
+			}
 			x++;
 			if((x*5)>=GRAFIC_W){
 				x=0;
@@ -475,16 +518,49 @@ int				i=0;
 
 void * t_task_1(void * arg)
 {
-struct task_par	*tp;
+struct 	task_par	*tp;
+struct	timespec t;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
-
+	t.tv_nsec = 0;
+	t.tv_sec = 0;
+	time_add_ms(&t, time_scale);
 
 	while(1){
 		run_task=1;
 		task[nu]=1;
 		nu++;
+		if(pip){
+			pthread_mutex_lock(&mux_a_pip);
+			a = 1;
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			pthread_mutex_lock(&mux_b_pip);
+			b = 1;
+			time_add_ms(&t, time_scale);
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			b=0;
+			pthread_mutex_unlock(&mux_b_pip);
+			time_add_ms(&t, time_scale);
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			a = 0;
+			pthread_mutex_unlock(&mux_a_pip);
+		}
+		else{
+			pthread_mutex_lock(&mux_a_pcp);
+			a = 1;
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			pthread_mutex_lock(&mux_b_pcp);
+			b = 1;
+			time_add_ms(&t, time_scale);
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			b = 0;
+			pthread_mutex_unlock(&mux_b_pcp);
+			time_add_ms(&t, time_scale);
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			a = 0;
+			pthread_mutex_unlock(&mux_a_pcp);
+		}
 		wait_for_period(tp);
 	}
 }
@@ -496,14 +572,32 @@ struct task_par	*tp;
 void * t_task_2(void * arg)
 {
 struct task_par	*tp;
+struct	timespec t;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
+	t.tv_nsec = 0;
+	t.tv_sec = 0;
+	time_add_ms(&t, 2*time_scale);
 
 	while(1){
 		run_task=2;
 		task[nu]=2;
 		nu++;
+		if(pip){
+			pthread_mutex_lock(&mux_b_pip);
+			b = 2;
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			b = 0;
+			pthread_mutex_unlock(&mux_b_pip);
+		}
+		else{
+			pthread_mutex_lock(&mux_b_pcp);
+			b = 2;
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			b = 0;
+			pthread_mutex_unlock(&mux_b_pcp);
+		}
 		wait_for_period(tp);
 	}
 }
@@ -534,14 +628,32 @@ struct task_par	*tp;
 void * t_task_4(void * arg)
 {
 struct task_par	*tp;
+struct	timespec t;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
+	t.tv_nsec = 0;
+	t.tv_sec = 0;
+	time_add_ms(&t, 2*time_scale);
 
 	while(1){
 		run_task=4;
 		task[nu]=4;
 		nu++;
+		if(pip){
+			pthread_mutex_lock(&mux_a_pip);
+			a = 4;
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			a = 0;
+			pthread_mutex_unlock(&mux_a_pip);
+		}
+		else{
+			pthread_mutex_lock(&mux_a_pcp);
+			a = 4;
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			a = 0;
+			pthread_mutex_unlock(&mux_a_pcp);
+		}
 		wait_for_period(tp);
 	}
 }
