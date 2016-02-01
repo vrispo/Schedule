@@ -41,11 +41,13 @@
 void setup (void);
 void setup_grafic(int x, int y, char s[], bool ng);
 void draw_task_parameter(char g);
+void write_instruction(void);
 
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 
 void create_task(void);
+void stop_task(void);
 
 void * grafic_task(void * arg);
 void * t_task_1(void * arg);
@@ -73,6 +75,7 @@ int					nu = 0;
 
 bool				run = TRUE;
 int					run_task;
+int					stop=0;
 
 bool				pip = TRUE;
 
@@ -171,28 +174,16 @@ char	l[20];
 			line(screen, x,(y-(i*(H_TASK+10))),(x+GRAFIC_W),(y-(i*(H_TASK+10))),0);
 		}
 	}
-
 }
 
 //--------------------------------------------------------------------------
-//SETUP
+//WRITE THE INSTRUCTIONS
 //--------------------------------------------------------------------------
 
-void setup(void)
+void write_instruction(void)
 {
 char s[30];
 
-	allegro_init();
-	install_keyboard();
-
-	set_color_depth(8);
-	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
-	clear_to_color(screen, 7);
-
-	//clock_gettime(CLOCK_MONOTONIC, &zero_time);
-	run_task=0;
-
-	//istruzioni
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 0, -1);
 	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 0);
 	line(screen, (INSTR_X+5+INSTR_L), INSTR_Y, (INSTR_X+INSTR_W), INSTR_Y, 0);
@@ -215,6 +206,25 @@ char s[30];
 	sprintf(s, "possesso risorsa a e b: ");
 	textout_ex(screen, font, s, (INSTR_X+350), (INSTR_Y+30), 0, -1);
 	rectfill(screen, (INSTR_X+540), (INSTR_Y+32.5), (INSTR_X+545), (INSTR_Y+37.5), 13);
+}
+
+//--------------------------------------------------------------------------
+//SETUP
+//--------------------------------------------------------------------------
+
+void setup(void)
+{
+	allegro_init();
+	install_keyboard();
+
+	set_color_depth(8);
+	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
+	clear_to_color(screen, 7);
+
+	//clock_gettime(CLOCK_MONOTONIC, &zero_time);
+	run_task=0;
+
+	write_instruction();
 
 	//grafici
 	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
@@ -251,6 +261,7 @@ void create_task(void)
 struct	timespec t;
 int 	delta = 0;
 
+	stop=0;
 	//create task 1
 	t1_tp.arg=0;
 	t1_tp.period=1200;
@@ -333,6 +344,19 @@ int 	delta = 0;
 		draw_activation_pcp(t4_tp, 4);
 		draw_deadline_pcp(t4_tp, 4);
 	}
+}
+
+//--------------------------------------------------------------------------
+//STOP TASK
+//--------------------------------------------------------------------------
+
+void stop_task(void)
+{
+	stop=1;
+	pthread_cancel(t1_tid);
+	pthread_cancel(t2_tid);
+	pthread_cancel(t3_tid);
+	pthread_cancel(t4_tid);
 }
 
 //--------------------------------------------------------------------------
@@ -424,9 +448,111 @@ bool	keyp=FALSE;
 			case KEY_ESC:
 				run=FALSE;
 				break;
+			case KEY_SPACE:
+				if(stop){
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+					x=0;
+					a=0;
+					b=0;
+					create_task();
+				}
+				else
+					stop_task();
+				break;
 			default:
 				break;
 		}
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW DEADLINE OF A TASK IN PIP GRAFIC
+//--------------------------------------------------------------------------
+
+void draw_deadline_pip(struct task_par tp, int i)
+{
+int				j=0;
+double			xd,nat;
+struct timespec	at;
+
+	clock_gettime(CLOCK_MONOTONIC, &at);
+
+	xd=0;
+	time_sub_ms(tp.dl, at, &xd);
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((xd/time_scale)*5);
+	for(j=0; xd<GRAFIC_W; j++){
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),12);
+		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW DEADLINE OF A TASK IN PCP GRAFIC
+//--------------------------------------------------------------------------
+
+void draw_deadline_pcp(struct task_par tp, int i)
+{
+int				j=0;
+double			xd,nat;
+struct timespec	at;
+
+	clock_gettime(CLOCK_MONOTONIC, &at);
+
+	xd=0;
+	time_sub_ms(tp.dl, at, &xd);
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((xd/time_scale)*5);
+	for(j=0; xd<GRAFIC_W; j++){
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),12);
+		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW ACTIVATION OF A TASK IN PIP GRAFIC
+//--------------------------------------------------------------------------
+
+void draw_activation_pip(struct task_par tp, int i)
+{
+int				j=0;
+double			xd,nat;
+struct timespec	at;
+
+	clock_gettime(CLOCK_MONOTONIC, &at);
+
+	//disegna le varie deadline per ogni task nel grafico pip
+	xd=0;
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((nat/time_scale)*5);
+	for(j=0; xd<GRAFIC_W; j++){
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),14);
+		xd=x+(((nat+(j*tp.period))/time_scale)*5);
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW ACTIVATION OF A TASK PCP
+//--------------------------------------------------------------------------
+
+void draw_activation_pcp(struct task_par tp, int i)
+{
+int				j=0;
+double			xd,nat;
+struct timespec	at;
+
+	clock_gettime(CLOCK_MONOTONIC, &at);
+
+	//disegna le varie deadline per ogni task nel grafico pcp
+	xd=0;
+	time_sub_ms(tp.at, at, &nat);
+	xd=x+((xd/time_scale)*5);
+	for(j=0; xd<GRAFIC_W; j++){
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),14);
+		xd=x+(((nat+(j*tp.period))/time_scale)*5);
 	}
 }
 
@@ -445,63 +571,65 @@ int				col=10;
 
 	x=0;
 	while(1){
-		if(pip){
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			//time_sub_ms(at, zero_time, &ms);
-			//x=(ms/time_scale);
-			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
-			//se entrambi dello stesso processo
-			if((a!=0)&(b==a)){
-				col = 13;
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+		if(!stop){
+			if(pip){
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				//time_sub_ms(at, zero_time, &ms);
+				//x=(ms/time_scale);
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+				//se entrambi dello stesso processo
+				if((a!=0)&(b==a)){
+					col = 13;
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+				}
+				//se a di un processo
+				if((a!=0)&(b!=a)){
+					col = 1;
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+				}
+				//se b di un processo
+				if((b!=0)&(b!=a)){
+					col = 9;
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
+				}
+				x++;
+				if((x*5)>=GRAFIC_W){
+					x=0;
+					//clock_gettime(CLOCK_MONOTONIC, &zero_time);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+					draw_task_parameter('i');
+				}
 			}
-			//se a di un processo
-			if((a!=0)&(b!=a)){
-				col = 1;
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-			}
-			//se b di un processo
-			if((b!=0)&(b!=a)){
-				col = 9;
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
-			}
-			x++;
-			if((x*5)>=GRAFIC_W){
-				x=0;
-				//clock_gettime(CLOCK_MONOTONIC, &zero_time);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
-				draw_task_parameter('i');
-			}
-		}
-		//pcp case
-		else{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			//time_sub_ms(at, zero_time, &ms);
-			//x=(ms/time_scale);
-			rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
-			//se entrambi dello stesso processo
-			if((a!=0)&(b==a)){
-				col = 13;
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-			}
-			//se a di un processo
-			if((a!=0)&(b!=a)){
-				col = 1;
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-			}
-			//se b di un processo
-			if((b!=0)&(b!=a)){
-				col = 9;
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
-			}
-			x++;
-			if((x*5)>=GRAFIC_W){
-				x=0;
-				//clock_gettime(CLOCK_MONOTONIC, &zero_time);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
-				draw_task_parameter('c');
+			//pcp case
+			else{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				//time_sub_ms(at, zero_time, &ms);
+				//x=(ms/time_scale);
+				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+				//se entrambi dello stesso processo
+				if((a!=0)&(b==a)){
+					col = 13;
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+				}
+				//se a di un processo
+				if((a!=0)&(b!=a)){
+					col = 1;
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
+				}
+				//se b di un processo
+				if((b!=0)&(b!=a)){
+					col = 9;
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
+				}
+				x++;
+				if((x*5)>=GRAFIC_W){
+					x=0;
+					//clock_gettime(CLOCK_MONOTONIC, &zero_time);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+					draw_task_parameter('c');
+				}
 			}
 		}
 		printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
@@ -655,93 +783,5 @@ struct	timespec t;
 			pthread_mutex_unlock(&mux_a_pcp);
 		}
 		wait_for_period(tp);
-	}
-}
-
-//--------------------------------------------------------------------------
-//DRAW DEADLINE OF A TASK IN PIP GRAFIC
-//--------------------------------------------------------------------------
-
-void draw_deadline_pip(struct task_par tp, int i)
-{
-int				j=0;
-double			xd,nat;
-struct timespec	at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-
-	xd=0;
-	time_sub_ms(tp.dl, at, &xd);
-	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale)*5);
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),12);
-		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
-	}
-}
-
-//--------------------------------------------------------------------------
-//DRAW DEADLINE OF A TASK IN PCP GRAFIC
-//--------------------------------------------------------------------------
-
-void draw_deadline_pcp(struct task_par tp, int i)
-{
-int				j=0;
-double			xd,nat;
-struct timespec	at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-
-	xd=0;
-	time_sub_ms(tp.dl, at, &xd);
-	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale)*5);
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),12);
-		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
-	}
-}
-
-//--------------------------------------------------------------------------
-//DRAW ACTIVATION OF A TASK IN PIP GRAFIC
-//--------------------------------------------------------------------------
-
-void draw_activation_pip(struct task_par tp, int i)
-{
-int				j=0;
-double			xd,nat;
-struct timespec	at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-
-	//disegna le varie deadline per ogni task nel grafico pip
-	xd=0;
-	time_sub_ms(tp.at, at, &nat);
-	xd=x+((nat/time_scale)*5);
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),14);
-		xd=x+(((nat+(j*tp.period))/time_scale)*5);
-	}
-}
-
-//--------------------------------------------------------------------------
-//DRAW ACTIVATION OF A TASK PCP
-//--------------------------------------------------------------------------
-
-void draw_activation_pcp(struct task_par tp, int i)
-{
-int				j=0;
-double			xd,nat;
-struct timespec	at;
-
-	clock_gettime(CLOCK_MONOTONIC, &at);
-
-	//disegna le varie deadline per ogni task nel grafico pcp
-	xd=0;
-	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale)*5);
-	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),14);
-		xd=x+(((nat+(j*tp.period))/time_scale)*5);
 	}
 }
