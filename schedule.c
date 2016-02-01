@@ -182,7 +182,7 @@ char	l[20];
 
 void write_instruction(void)
 {
-char s[30];
+char s[60];
 
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 0, -1);
 	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 0);
@@ -206,6 +206,9 @@ char s[30];
 	sprintf(s, "possesso risorsa a e b: ");
 	textout_ex(screen, font, s, (INSTR_X+350), (INSTR_Y+30), 0, -1);
 	rectfill(screen, (INSTR_X+540), (INSTR_Y+32.5), (INSTR_X+545), (INSTR_Y+37.5), 13);
+
+	sprintf(s, "PRESS RIGHT ARROW TO CHANGE FROM PCP TO PIP AND VICEVERSA");
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+40), 0, -1);
 }
 
 //--------------------------------------------------------------------------
@@ -446,14 +449,20 @@ bool	keyp=FALSE;
 		switch(scan)
 		{
 			case KEY_ESC:
+			{
 				run=FALSE;
 				break;
+			}
 			case KEY_SPACE:
-				if(stop){
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+			{	if(stop){
+					if(pip){
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+					}
+					else{
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+					}
 					x=0;
 					a=0;
 					b=0;
@@ -462,6 +471,31 @@ bool	keyp=FALSE;
 				else
 					stop_task();
 				break;
+			}
+			case KEY_RIGHT:
+			{
+				if(pip){
+					stop_task();
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+					x=0;
+					a=0;
+					b=0;
+					pip=false;
+					create_task();
+				}
+				else{
+					stop_task();
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+					x=0;
+					a=0;
+					b=0;
+					pip=true;
+					create_task();
+				}
+				break;
+			}
 			default:
 				break;
 		}
