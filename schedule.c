@@ -56,6 +56,7 @@ void * t_task_1(void * arg);
 void * t_task_2(void * arg);
 void * t_task_3(void * arg);
 void * t_task_4(void * arg);
+void * workload_task(void * arg);
 
 void draw_deadline_pip(struct task_par tp, int i);
 void draw_deadline_pcp(struct task_par tp, int i);
@@ -76,6 +77,10 @@ int					pox_ts = 0;
 int					x = 0;
 int					task[5];
 int					nu = 0;
+
+int					free_ms = 0;	//number of ms that the CPU is free
+double				wl = 0;			//actual workload
+double				pwl = 0;		//previous workload
 
 bool				run = TRUE;
 int					run_task;
@@ -109,6 +114,10 @@ pthread_attr_t		t3_attr;
 pthread_t			t4_tid;
 struct task_par		t4_tp;
 pthread_attr_t		t4_attr;
+
+pthread_t			workload_tid;
+struct task_par		workload_tp;
+pthread_attr_t		workload_attr;
 
 int					max_prio_a = 90;
 int					max_prio_b = 70;
@@ -247,11 +256,22 @@ void setup(void)
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
 
+	//create workload task
+	workload_tp.arg=0;
+	workload_tp.period=1;
+	workload_tp.deadline=10;
+	workload_tp.priority=1;
+	workload_tp.dmiss=0;
+
+	pthread_attr_init(&workload_attr);
+	pthread_attr_setdetachstate(&workload_attr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&grafic_tid, &workload_attr, workload_task, &workload_tp);
+
 	//create grafic task
 	grafic_tp.arg=0;
 	grafic_tp.period=time_scale[pox_ts];
 	grafic_tp.deadline=10;
-	grafic_tp.priority=20;
+	grafic_tp.priority=99;
 	grafic_tp.dmiss=0;
 
 	pthread_attr_init(&grafic_attr);
@@ -402,7 +422,7 @@ void change_time_scale(void)
 	grafic_tp.arg=0;
 	grafic_tp.period=time_scale[pox_ts];
 	grafic_tp.deadline=10;
-	grafic_tp.priority=20;
+	grafic_tp.priority=99;
 	grafic_tp.dmiss=0;
 
 	pthread_attr_init(&grafic_attr);
@@ -511,6 +531,8 @@ bool	keyp=FALSE;
 						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
 						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
 					}
+					pwl = 0;
+					wl = 0;
 					x=0;
 					a=0;
 					b=0;
@@ -526,6 +548,8 @@ bool	keyp=FALSE;
 					stop_task();
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+					pwl = 0;
+					wl = 0;
 					x=0;
 					a=0;
 					b=0;
@@ -536,6 +560,8 @@ bool	keyp=FALSE;
 					stop_task();
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+					pwl = 0;
+					wl = 0;
 					x=0;
 					a=0;
 					b=0;
@@ -659,11 +685,16 @@ int				col=10;
 	//x=0;
 	while(1){
 		if(!stop){
+			//calcola workload e fai grafico
+			pwl = wl;
+			wl = 1 - (free_ms/time_scale[pox_ts]);
+			free_ms = 0;
 			if(pip){
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				//time_sub_ms(at, zero_time, &ms);
 				//x=(ms/time_scale[pox_ts]);
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+				if(run_task!=7)
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
 				//se entrambi dello stesso processo
 				if((a!=0)&(b==a)){
 					col = 13;
@@ -679,6 +710,10 @@ int				col=10;
 					col = 9;
 					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
 				}
+
+				line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_PIPW_Y-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIPW_Y-(GRAFIC_H*wl)), 4);
+
+				run_task = 7;
 				x++;
 				if((x*5)>=GRAFIC_W){
 					x=0;
@@ -693,7 +728,8 @@ int				col=10;
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				//time_sub_ms(at, zero_time, &ms);
 				//x=(ms/[pox_ts]);
-				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+				if(run_task!=7)
+					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
 				//se entrambi dello stesso processo
 				if((a!=0)&(b==a)){
 					col = 13;
@@ -709,6 +745,10 @@ int				col=10;
 					col = 9;
 					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
 				}
+
+				line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_PCPW_Y-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCPW_Y-(GRAFIC_H*wl)), 4);
+
+				run_task = 7;
 				x++;
 				if((x*5)>=GRAFIC_W){
 					x=0;
@@ -720,6 +760,7 @@ int				col=10;
 			}
 		}
 		//printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
+		printf("wl=%f nu=%d+ ", wl, nu);
 		nu=0;
 		for(i=0; i<5; i++)
 			task[i]=7;
@@ -871,4 +912,21 @@ struct	timespec t;
 		}
 		wait_for_period(tp);
 	}
+}
+
+//--------------------------------------------------------------------------
+//WORKLOAD TASK
+//--------------------------------------------------------------------------
+
+void * workload_task(void * arg)
+{
+struct task_par	*tp;
+
+		tp= (struct task_par*)arg;
+		set_period(tp);
+
+		while(1){
+			free_ms++;
+			wait_for_period(tp);
+		}
 }
