@@ -78,6 +78,7 @@ int					x = 0;
 int					task[5];
 int					nu = 0;
 
+bool				use = false;
 int					free_ms = 0;	//number of ms that the CPU is free
 double				wl = 0;			//actual workload
 double				pwl = 0;		//previous workload
@@ -147,6 +148,7 @@ int 	delta = time_scale[pox_ts]+10;
 
 	while(run)
 	{
+		use = true;
 		run_task=0;
 		task[nu]=0;
 		nu++;
@@ -784,6 +786,7 @@ struct	timespec t;
 	time_add_ms(&t, time_scale[pox_ts]);
 
 	while(1){
+		use = true;
 		run_task=1;
 		task[nu]=1;
 		nu++;
@@ -837,6 +840,7 @@ struct	timespec t;
 	time_add_ms(&t, 2*time_scale[pox_ts]);
 
 	while(1){
+		use = true;
 		run_task=2;
 		task[nu]=2;
 		nu++;
@@ -870,6 +874,7 @@ struct task_par	*tp;
 	set_period(tp);
 
 	while(1){
+		use = true;
 		run_task=3;
 		task[nu]=3;
 		nu++;
@@ -893,6 +898,7 @@ struct	timespec t;
 	time_add_ms(&t, 2*time_scale[pox_ts]);
 
 	while(1){
+		use = true;
 		run_task=4;
 		task[nu]=4;
 		nu++;
@@ -926,8 +932,9 @@ struct task_par	*tp;
 		set_period(tp);
 
 		while(1){
-			if(nu==0)
+			if(!use)
 				free_ms++;
+			use = false;
 			wait_for_period(tp);
 		}
 }
