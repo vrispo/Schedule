@@ -49,6 +49,8 @@ void get_keycodes(char * scan, char * ascii);
 void create_task(void);
 void stop_task(void);
 
+void change_time_scale(void);
+
 void * grafic_task(void * arg);
 void * t_task_1(void * arg);
 void * t_task_2(void * arg);
@@ -67,8 +69,10 @@ void create_mux_pcp(void);
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
+int					time_scale[3] = {50, 75, 100};
+int					pox_ts = 0;
+
 //struct 			timespec zero_time;
-int					time_scale = 50;
 int					x = 0;
 int					task[5];
 int					nu = 0;
@@ -126,7 +130,7 @@ pthread_mutexattr_t	mattr_pcp;
 int main(int argc, char * argv[])
 {
 struct	timespec t;
-int 	delta = time_scale+10;
+int 	delta = time_scale[pox_ts]+10;
 
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
@@ -152,7 +156,7 @@ int 	delta = time_scale+10;
 void setup_grafic(int x, int y, char s[], bool ng)
 {
 int		i = 0;
-char	l[20];
+char	l[2];
 
 	rectfill(screen, (x-5), (y-GRAFIC_H-2), (x+GRAFIC_W), (y+5), 7);
 
@@ -184,6 +188,8 @@ void write_instruction(void)
 {
 char s[60];
 
+	rectfill(screen, INSTR_X, INSTR_Y, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 7);
+
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 0, -1);
 	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 0);
 	line(screen, (INSTR_X+5+INSTR_L), INSTR_Y, (INSTR_X+INSTR_W), INSTR_Y, 0);
@@ -193,9 +199,10 @@ char s[60];
 
 	textout_ex(screen, font, "PRESS KEY ESC TO EXIT", (INSTR_X+10), (INSTR_Y+10), 0, -1);
 
-	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale);
+	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale[pox_ts]);
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
 	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 0);
+	textout_ex(screen, font,"PRESS UP ARROW TO CHANGE (50 - 75 - 100 ms)" , (INSTR_X+220), (INSTR_Y+20), 0, -1);
 
 	sprintf(s, "possesso risorsa a: ");
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 0, -1);
@@ -242,16 +249,15 @@ void setup(void)
 
 	//create grafic task
 	grafic_tp.arg=0;
-	grafic_tp.period=time_scale;
+	grafic_tp.period=time_scale[pox_ts];
 	grafic_tp.deadline=10;
 	grafic_tp.priority=20;
 	grafic_tp.dmiss=0;
 
 	pthread_attr_init(&grafic_attr);
+	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
 
-	create_mux_pip();
-	create_mux_pcp();
 	create_task();
 }
 
@@ -265,6 +271,14 @@ struct	timespec t;
 int 	delta = 0;
 
 	stop=0;
+
+	if(pip){
+		create_mux_pip();
+	}
+	else{
+		create_mux_pcp();
+	}
+
 	//create task 1
 	t1_tp.arg=0;
 	t1_tp.period=1200;
@@ -272,6 +286,7 @@ int 	delta = 0;
 	t1_tp.priority=60;
 	t1_tp.dmiss=0;
 	pthread_attr_init(&t1_attr);
+	pthread_attr_setdetachstate(&t1_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
 
 	if(pip){
@@ -283,7 +298,7 @@ int 	delta = 0;
 		draw_deadline_pcp(t1_tp, 1);
 	}
 
-	delta = 2*time_scale;
+	delta = 2*time_scale[pox_ts];
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
@@ -295,6 +310,7 @@ int 	delta = 0;
 	t2_tp.priority=70;
 	t2_tp.dmiss=0;
 	pthread_attr_init(&t2_attr);
+	pthread_attr_setdetachstate(&t2_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
 	if(pip){
@@ -306,7 +322,7 @@ int 	delta = 0;
 		draw_deadline_pcp(t2_tp, 2);
 	}
 
-	time_add_ms(&t, time_scale);
+	time_add_ms(&t, time_scale[pox_ts]);
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 3
@@ -316,6 +332,7 @@ int 	delta = 0;
 	t3_tp.priority=80;
 	t3_tp.dmiss=0;
 	pthread_attr_init(&t3_attr);
+	pthread_attr_setdetachstate(&t3_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
 
 	if(pip){
@@ -327,7 +344,7 @@ int 	delta = 0;
 		draw_deadline_pcp(t3_tp, 3);
 	}
 
-	time_add_ms(&t, time_scale);
+	time_add_ms(&t, time_scale[pox_ts]);
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 4
@@ -337,6 +354,7 @@ int 	delta = 0;
 	t4_tp.priority=90;
 	t4_tp.dmiss=0;
 	pthread_attr_init(&t4_attr);
+	pthread_attr_setdetachstate(&t4_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
 	if(pip){
@@ -360,6 +378,36 @@ void stop_task(void)
 	pthread_cancel(t2_tid);
 	pthread_cancel(t3_tid);
 	pthread_cancel(t4_tid);
+
+	pthread_mutex_destroy(&mux_a_pip);
+	pthread_mutex_destroy(&mux_b_pip);
+	pthread_mutex_destroy(&mux_a_pcp);
+	pthread_mutex_destroy(&mux_b_pcp);
+}
+
+//--------------------------------------------------------------------------
+//CHANGE TIME SCALE
+//--------------------------------------------------------------------------
+
+void change_time_scale(void)
+{
+	pox_ts++;
+	if(pox_ts==3){
+		pox_ts = 0;
+	}
+
+	pthread_cancel(grafic_tid);
+	write_instruction();
+
+	grafic_tp.arg=0;
+	grafic_tp.period=time_scale[pox_ts];
+	grafic_tp.deadline=10;
+	grafic_tp.priority=20;
+	grafic_tp.dmiss=0;
+
+	pthread_attr_init(&grafic_attr);
+	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
 }
 
 //--------------------------------------------------------------------------
@@ -496,6 +544,11 @@ bool	keyp=FALSE;
 				}
 				break;
 			}
+			case KEY_UP:
+			{
+				change_time_scale();
+				break;
+			}
 			default:
 				break;
 		}
@@ -517,10 +570,10 @@ struct timespec	at;
 	xd=0;
 	time_sub_ms(tp.dl, at, &xd);
 	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale)*5);
+	xd=x+((xd/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
 		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),12);
-		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
+		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
 
@@ -539,10 +592,10 @@ struct timespec	at;
 	xd=0;
 	time_sub_ms(tp.dl, at, &xd);
 	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale)*5);
+	xd=x+((xd/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
 		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),12);
-		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale)*5);
+		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
 
@@ -561,10 +614,10 @@ struct timespec	at;
 	//disegna le varie deadline per ogni task nel grafico pip
 	xd=0;
 	time_sub_ms(tp.at, at, &nat);
-	xd=x+((nat/time_scale)*5);
+	xd=x+((nat/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
 		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),14);
-		xd=x+(((nat+(j*tp.period))/time_scale)*5);
+		xd=x+(((nat+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
 
@@ -583,10 +636,10 @@ struct timespec	at;
 	//disegna le varie deadline per ogni task nel grafico pcp
 	xd=0;
 	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale)*5);
+	xd=x+((xd/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
 		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),14);
-		xd=x+(((nat+(j*tp.period))/time_scale)*5);
+		xd=x+(((nat+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
 
@@ -603,13 +656,13 @@ int				col=10;
 
 	set_period(&grafic_tp);
 
-	x=0;
+	//x=0;
 	while(1){
 		if(!stop){
 			if(pip){
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				//time_sub_ms(at, zero_time, &ms);
-				//x=(ms/time_scale);
+				//x=(ms/time_scale[pox_ts]);
 				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
 				//se entrambi dello stesso processo
 				if((a!=0)&(b==a)){
@@ -639,7 +692,7 @@ int				col=10;
 			else{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				//time_sub_ms(at, zero_time, &ms);
-				//x=(ms/time_scale);
+				//x=(ms/[pox_ts]);
 				rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
 				//se entrambi dello stesso processo
 				if((a!=0)&(b==a)){
@@ -666,7 +719,7 @@ int				col=10;
 				}
 			}
 		}
-		printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
+		//printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
 		nu=0;
 		for(i=0; i<5; i++)
 			task[i]=7;
@@ -687,7 +740,7 @@ struct	timespec t;
 	set_period(tp);
 	t.tv_nsec = 0;
 	t.tv_sec = 0;
-	time_add_ms(&t, time_scale);
+	time_add_ms(&t, time_scale[pox_ts]);
 
 	while(1){
 		run_task=1;
@@ -699,11 +752,11 @@ struct	timespec t;
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			pthread_mutex_lock(&mux_b_pip);
 			b = 1;
-			time_add_ms(&t, time_scale);
+			time_add_ms(&t, time_scale[pox_ts]);
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			b=0;
 			pthread_mutex_unlock(&mux_b_pip);
-			time_add_ms(&t, time_scale);
+			time_add_ms(&t, time_scale[pox_ts]);
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			a = 0;
 			pthread_mutex_unlock(&mux_a_pip);
@@ -714,11 +767,11 @@ struct	timespec t;
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			pthread_mutex_lock(&mux_b_pcp);
 			b = 1;
-			time_add_ms(&t, time_scale);
+			time_add_ms(&t, time_scale[pox_ts]);
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			b = 0;
 			pthread_mutex_unlock(&mux_b_pcp);
-			time_add_ms(&t, time_scale);
+			time_add_ms(&t, time_scale[pox_ts]);
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 			a = 0;
 			pthread_mutex_unlock(&mux_a_pcp);
@@ -740,7 +793,7 @@ struct	timespec t;
 	set_period(tp);
 	t.tv_nsec = 0;
 	t.tv_sec = 0;
-	time_add_ms(&t, 2*time_scale);
+	time_add_ms(&t, 2*time_scale[pox_ts]);
 
 	while(1){
 		run_task=2;
@@ -796,7 +849,7 @@ struct	timespec t;
 	set_period(tp);
 	t.tv_nsec = 0;
 	t.tv_sec = 0;
-	time_add_ms(&t, 2*time_scale);
+	time_add_ms(&t, 2*time_scale[pox_ts]);
 
 	while(1){
 		run_task=4;
