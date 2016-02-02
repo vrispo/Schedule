@@ -259,7 +259,7 @@ void setup(void)
 	//create workload task
 	workload_tp.arg=0;
 	workload_tp.period=1;
-	workload_tp.deadline=10;
+	workload_tp.deadline=1;
 	workload_tp.priority=1;
 	workload_tp.dmiss=0;
 
@@ -687,7 +687,8 @@ int				col=10;
 		if(!stop){
 			//calcola workload e fai grafico
 			pwl = wl;
-			wl = 1 - (free_ms/time_scale[pox_ts]);
+			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
+			printf("freems=%d wl=%f nu=%d+ ", free_ms, wl, nu);
 			free_ms = 0;
 			if(pip){
 				clock_gettime(CLOCK_MONOTONIC, &at);
@@ -760,7 +761,6 @@ int				col=10;
 			}
 		}
 		//printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
-		printf("wl=%f nu=%d+ ", wl, nu);
 		nu=0;
 		for(i=0; i<5; i++)
 			task[i]=7;
@@ -926,7 +926,8 @@ struct task_par	*tp;
 		set_period(tp);
 
 		while(1){
-			free_ms++;
+			if(nu==0)
+				free_ms++;
 			wait_for_period(tp);
 		}
 }
