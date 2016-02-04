@@ -51,6 +51,10 @@ void stop_task(void);
 
 void change_time_scale(void);
 
+void multi_exec(int n, int gx, int gy);
+
+void draw_resource(int gx, int gy);
+
 void * grafic_task(void * arg);
 void * t_task_1(void * arg);
 void * t_task_2(void * arg);
@@ -672,6 +676,77 @@ struct timespec	at;
 }
 
 //--------------------------------------------------------------------------
+//HANDLING MULTI EXEC TASK
+//--------------------------------------------------------------------------
+
+void multi_exec(int n, int gx, int gy)
+{
+	switch(n)
+	{
+		case 1:
+		{
+			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+			break;
+		}
+		case 2:
+		{
+			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+2), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+2), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			break;
+		}
+		case 3:
+		{
+			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+1), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+3), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+3), (gy-(task[2]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
+			break;
+		}
+		case 4:
+		{
+			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+1), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+2), (gy-(task[2]*(H_TASK+10))), (gx+(x*5)+3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+3), (gy-(task[3]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
+			break;
+		}
+		case 5:
+		{
+			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+1), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+2), (gy-(task[2]*(H_TASK+10))), (gx+(x*5)+3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+3), (gy-(task[3]*(H_TASK+10))), (gx+(x*5)+4), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)+4), (gy-(task[4]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[4]*(H_TASK+10))), 10);
+			break;
+		}
+	}
+}
+
+//--------------------------------------------------------------------------
+//DRAW RESOURCE OWNER
+//--------------------------------------------------------------------------
+
+void draw_resource(int gx, int gy)
+{
+int col = 10;
+
+	//se entrambi dello stesso processo
+	if((a!=0)&(b==a)){
+		col = 13;
+		rectfill(screen, (gx+(x*5)), (gy-(a*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
+	}
+	//se a di un processo
+	if((a!=0)&(b!=a)){
+		col = 1;
+		rectfill(screen, (gx+(x*5)), (gy-(a*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
+	}
+	//se b di un processo
+	if((b!=0)&(b!=a)){
+		col = 9;
+		rectfill(screen, (gx+(x*5)), (gy-(b*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
+	}
+}
+
+//--------------------------------------------------------------------------
 //GRAFIC TASK
 //--------------------------------------------------------------------------
 
@@ -679,40 +754,23 @@ void * grafic_task(void * arg)
 {
 struct timespec	at;
 int				i=0;
-int				col=10;
-//double			ms;
 
 	set_period(&grafic_tp);
 
-	//x=0;
 	while(1){
 		if(!stop){
 			//calcola workload e fai grafico
 			pwl = wl;
 			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
-			printf("freems=%d wl=%f nu=%d+ ", free_ms, wl, nu);
+			//printf("freems=%d wl=%f nu=%d+ ", free_ms, wl, nu);
 			free_ms = 0;
 			if(pip){
 				clock_gettime(CLOCK_MONOTONIC, &at);
-				//time_sub_ms(at, zero_time, &ms);
-				//x=(ms/time_scale[pox_ts]);
+
 				if(run_task!=7)
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
-				//se entrambi dello stesso processo
-				if((a!=0)&(b==a)){
-					col = 13;
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-				}
-				//se a di un processo
-				if((a!=0)&(b!=a)){
-					col = 1;
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-				}
-				//se b di un processo
-				if((b!=0)&(b!=a)){
-					col = 9;
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PIP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
-				}
+					multi_exec(nu, ORIGIN_GRAFIC_X, ORIGIN_PIP_Y);
+
+				draw_resource(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y);
 
 				line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_PIPW_Y-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIPW_Y-(GRAFIC_H*wl)), 4);
 
@@ -720,7 +778,6 @@ int				col=10;
 				x++;
 				if((x*5)>=GRAFIC_W){
 					x=0;
-					//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
 					draw_task_parameter('i');
@@ -729,25 +786,11 @@ int				col=10;
 			//pcp case
 			else{
 				clock_gettime(CLOCK_MONOTONIC, &at);
-				//time_sub_ms(at, zero_time, &ms);
-				//x=(ms/[pox_ts]);
+
 				if(run_task!=7)
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(run_task*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
-				//se entrambi dello stesso processo
-				if((a!=0)&(b==a)){
-					col = 13;
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-				}
-				//se a di un processo
-				if((a!=0)&(b!=a)){
-					col = 1;
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(a*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(a*(H_TASK+10))), col);
-				}
-				//se b di un processo
-				if((b!=0)&(b!=a)){
-					col = 9;
-					rectfill(screen, (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCP_Y-(b*(H_TASK+10))), (ORIGIN_GRAFIC_X+(x*5)+5), (ORIGIN_PCP_Y-(H_TASK/4)-(b*(H_TASK+10))), col);
-				}
+					multi_exec(nu, ORIGIN_GRAFIC_X, ORIGIN_PCP_Y);
+
+				draw_resource(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y);
 
 				line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_PCPW_Y-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCPW_Y-(GRAFIC_H*wl)), 4);
 
@@ -755,7 +798,6 @@ int				col=10;
 				x++;
 				if((x*5)>=GRAFIC_W){
 					x=0;
-					//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
 					draw_task_parameter('c');
