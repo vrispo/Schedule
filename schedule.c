@@ -1,9 +1,14 @@
+#define _GNU_SOURCE
+
+#include <features.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sched.h>
+#include <unistd.h>
 #include <semaphore.h>
 #include <allegro.h>
 #include <stdbool.h>
-#include <pthread.h>
 #include "taskRT.h"
 #include "timeplus.h"
 
@@ -25,8 +30,6 @@
 #define INSTR_Y			10
 
 #define N_TASK			4
-
-#define _GNU_SOURCE
 
 //--------------------------------------------------------------------------
 //TYPE DEFINITIONS
@@ -143,9 +146,19 @@ pthread_mutexattr_t	mattr_pcp;
 
 int main(int argc, char * argv[])
 {
-struct	timespec t;
-int 	delta = time_scale[pox_ts]+10;
+struct		timespec t;
+int 		delta = time_scale[pox_ts]+10;
+cpu_set_t	cpuset, cpuget;
+pthread_t	thread;
+int			cpu;
+int			ncpu;
 
+     thread = pthread_self();
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
+
+	if (pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
+		perror("pthread_setaffinity_np");
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
 	setup();
@@ -157,6 +170,15 @@ int 	delta = time_scale[pox_ts]+10;
 		task[nu]=0;
 		nu++;
 		analysis_key();
+		cpu = sched_getcpu();
+		if(cpu!=0)
+			printf("ERRORE CPU MAIN ");
+		 pthread_getaffinity_np(thread, sizeof(cpuget), &cpuget);
+		 ncpu = CPU_COUNT(&cpuget);
+		 if(ncpu!=1)
+			 printf("more eligible CPU for main:%d",ncpu);
+		 if(CPU_ISSET(0, &cpuget)==0)
+			 printf("CPU 0 non in the set");
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 	}
 
@@ -239,6 +261,8 @@ char s[60];
 
 void setup(void)
 {
+cpu_set_t	cpuset;
+
 	allegro_init();
 	install_keyboard();
 
@@ -248,6 +272,9 @@ void setup(void)
 
 	//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 	run_task=0;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
 
 	write_instruction();
 
@@ -271,6 +298,7 @@ void setup(void)
 
 	pthread_attr_init(&workload_attr);
 	pthread_attr_setdetachstate(&workload_attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setaffinity_np(&workload_attr, sizeof(cpuset), &cpuset);
 	pthread_create(&grafic_tid, &workload_attr, workload_task, &workload_tp);
 
 	//create grafic task
@@ -293,10 +321,14 @@ void setup(void)
 
 void create_task(void)
 {
-struct	timespec t;
-int 	delta = 0;
+struct		timespec t;
+int			delta = 0;
+cpu_set_t	cpuset;
 
 	stop=0;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
 
 	if(pip){
 		create_mux_pip();
@@ -313,6 +345,7 @@ int 	delta = 0;
 	t1_tp.dmiss=0;
 	pthread_attr_init(&t1_attr);
 	pthread_attr_setdetachstate(&t1_attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setaffinity_np(&t1_attr, sizeof(cpuset), &cpuset);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
 
 	if(pip){
@@ -337,6 +370,7 @@ int 	delta = 0;
 	t2_tp.dmiss=0;
 	pthread_attr_init(&t2_attr);
 	pthread_attr_setdetachstate(&t2_attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setaffinity_np(&t2_attr, sizeof(cpuset), &cpuset);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
 	if(pip){
@@ -359,6 +393,7 @@ int 	delta = 0;
 	t3_tp.dmiss=0;
 	pthread_attr_init(&t3_attr);
 	pthread_attr_setdetachstate(&t3_attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setaffinity_np(&t3_attr, sizeof(cpuset), &cpuset);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
 
 	if(pip){
@@ -381,6 +416,7 @@ int 	delta = 0;
 	t4_tp.dmiss=0;
 	pthread_attr_init(&t4_attr);
 	pthread_attr_setdetachstate(&t4_attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setaffinity_np(&t4_attr, sizeof(cpuset), &cpuset);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
 	if(pip){
@@ -821,47 +857,80 @@ int				i=0;
 
 void * t_task_1(void * arg)
 {
-struct 	task_par	*tp;
+struct 	task_par *tp;
 struct	timespec t;
+struct	timespec at;
+int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
-	t.tv_nsec = 0;
+/*	t.tv_nsec = 0;
 	t.tv_sec = 0;
-	time_add_ms(&t, time_scale[pox_ts]);
+	time_add_ms(&t, time_scale[pox_ts]);*/
 
 	while(1){
 		use = true;
 		run_task=1;
 		task[nu]=1;
 		nu++;
+		cpu = sched_getcpu();
+		if(cpu!=0)
+			printf("ERRORE CPU ");
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
-			a = 1;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				a = 1;
+			}while(time_cmp(at, t)<=0);
+
 			pthread_mutex_lock(&mux_b_pip);
-			b = 1;
-			time_add_ms(&t, time_scale[pox_ts]);
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				b = 1;
+			}while(time_cmp(at, t)<=0);
+
 			b=0;
 			pthread_mutex_unlock(&mux_b_pip);
-			time_add_ms(&t, time_scale[pox_ts]);
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+			}while(time_cmp(at, t)<=0);
+
 			a = 0;
 			pthread_mutex_unlock(&mux_a_pip);
 		}
 		else{
 			pthread_mutex_lock(&mux_a_pcp);
-			a = 1;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				a = 1;
+			}while(time_cmp(at, t)<=0);
+
 			pthread_mutex_lock(&mux_b_pcp);
-			b = 1;
-			time_add_ms(&t, time_scale[pox_ts]);
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
-			b = 0;
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				b = 1;
+			}while(time_cmp(at, t)<=0);
+
+			b=0;
 			pthread_mutex_unlock(&mux_b_pcp);
-			time_add_ms(&t, time_scale[pox_ts]);
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+			}while(time_cmp(at, t)<=0);
+
 			a = 0;
 			pthread_mutex_unlock(&mux_a_pcp);
 		}
@@ -875,8 +944,9 @@ struct	timespec t;
 
 void * t_task_2(void * arg)
 {
-struct task_par	*tp;
+struct	task_par	*tp;
 struct	timespec t;
+int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -889,6 +959,9 @@ struct	timespec t;
 		run_task=2;
 		task[nu]=2;
 		nu++;
+		cpu = sched_getcpu();
+		if(cpu!=0)
+			printf("ERRORE CPU ");
 		if(pip){
 			pthread_mutex_lock(&mux_b_pip);
 			b = 2;
@@ -913,7 +986,8 @@ struct	timespec t;
 
 void * t_task_3(void * arg)
 {
-struct task_par	*tp;
+struct	task_par	*tp;
+int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -923,6 +997,9 @@ struct task_par	*tp;
 		run_task=3;
 		task[nu]=3;
 		nu++;
+		cpu = sched_getcpu();
+		if(cpu!=0)
+			printf("ERRORE CPU ");
 		wait_for_period(tp);
 	}
 }
@@ -933,8 +1010,9 @@ struct task_par	*tp;
 
 void * t_task_4(void * arg)
 {
-struct task_par	*tp;
+struct	task_par	*tp;
 struct	timespec t;
+int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -946,6 +1024,9 @@ struct	timespec t;
 		use = true;
 		run_task=4;
 		task[nu]=4;
+		cpu = sched_getcpu();
+		if(cpu!=0)
+			printf("ERRORE CPU ");
 		nu++;
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
@@ -971,7 +1052,8 @@ struct	timespec t;
 
 void * workload_task(void * arg)
 {
-struct task_par	*tp;
+struct	task_par	*tp;
+int		cpu;
 
 		tp= (struct task_par*)arg;
 		set_period(tp);
@@ -980,6 +1062,9 @@ struct task_par	*tp;
 			if(!use)
 				free_ms++;
 			use = false;
+			cpu = sched_getcpu();
+			if(cpu!=0)
+				printf("ERRORE CPU ");
 			wait_for_period(tp);
 		}
 }
