@@ -55,6 +55,7 @@ void stop_task(void);
 void change_time_scale(void);
 
 void multi_exec(int n, int gx, int gy);
+void current_task(int tsk);
 
 void draw_resource(int gx, int gy);
 
@@ -147,13 +148,13 @@ pthread_mutexattr_t	mattr_pcp;
 int main(int argc, char * argv[])
 {
 struct		timespec t;
-int 		delta = time_scale[pox_ts]+10;
+int 		delta = 500;
 cpu_set_t	cpuset, cpuget;
 pthread_t	thread;
 int			cpu;
 int			ncpu;
 
-     thread = pthread_self();
+    thread = pthread_self();
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 
@@ -728,7 +729,7 @@ void multi_exec(int n, int gx, int gy)
 	{
 		case 1:
 		{
-			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(run_task*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
 			break;
 		}
 		case 2:
@@ -786,6 +787,30 @@ int col = 10;
 	if((b!=0)&(b!=a)){
 		col = 9;
 		rectfill(screen, (gx+(x*5)), (gy-(b*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
+	}
+}
+
+//--------------------------------------------------------------------------
+//CURRENT TASK
+//--------------------------------------------------------------------------
+
+void current_task(int tsk)
+{
+bool	task_r = false;
+int		i;
+
+	run_task=tsk;
+	for(i= 0; i < nu; i++)
+	{
+		if(task[i]==tsk)
+		{
+			task_r = true;
+		}
+	}
+	if(task_r == false)
+	{
+		task[nu] = tsk;
+		nu++;
 	}
 }
 
@@ -884,6 +909,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 1;
+				current_task(1);
 			}while(time_cmp(at, t)<=0);
 
 			pthread_mutex_lock(&mux_b_pip);
@@ -892,6 +918,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 1;
+				current_task(1);
 			}while(time_cmp(at, t)<=0);
 
 			b=0;
@@ -901,6 +928,7 @@ int		cpu;
 			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
+				current_task(1);
 			}while(time_cmp(at, t)<=0);
 
 			a = 0;
@@ -913,6 +941,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 1;
+				current_task(1);
 			}while(time_cmp(at, t)<=0);
 
 			pthread_mutex_lock(&mux_b_pcp);
@@ -921,6 +950,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 1;
+				current_task(1);
 			}while(time_cmp(at, t)<=0);
 
 			b=0;
@@ -930,6 +960,7 @@ int		cpu;
 			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
+				current_task(1);
 			}while(time_cmp(at, t)<=0);
 
 			a = 0;
@@ -969,6 +1000,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 2;
+				current_task(2);
 			}while(time_cmp(at, t)<=0);
 			b = 0;
 
@@ -982,6 +1014,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 2;
+				current_task(2);
 			}while(time_cmp(at, t)<=0);
 			b = 0;
 
@@ -1016,6 +1049,7 @@ int		cpu;
 		time_add_ms(&t, 300);
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
+			current_task(3);
 		}while(time_cmp(at, t)<=0);
 
 		if(cpu!=0)
@@ -1054,6 +1088,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 4;
+				current_task(4);
 			}while(time_cmp(at, t)<=0);
 			a = 0;
 
@@ -1067,6 +1102,7 @@ int		cpu;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 4;
+				current_task(4);
 			}while(time_cmp(at, t)<=0);
 			a = 0;
 
