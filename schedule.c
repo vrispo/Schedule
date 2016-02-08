@@ -357,15 +357,15 @@ cpu_set_t	cpuset;
 		draw_deadline_pcp(t1_tp, 1);
 	}
 
-	delta = 2*time_scale[pox_ts];
+	delta = 150;
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 2
 	t2_tp.arg=0;
-	t2_tp.period=1400;
-	t2_tp.deadline=1200;
+	t2_tp.period=1200;
+	t2_tp.deadline=1000;
 	t2_tp.priority=70;
 	t2_tp.dmiss=0;
 	pthread_attr_init(&t2_attr);
@@ -382,13 +382,15 @@ cpu_set_t	cpuset;
 		draw_deadline_pcp(t2_tp, 2);
 	}
 
-	time_add_ms(&t, time_scale[pox_ts]);
+	delta = 50;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 3
 	t3_tp.arg=0;
-	t3_tp.period=1600;
-	t3_tp.deadline=1400;
+	t3_tp.period=1200;
+	t3_tp.deadline=1000;
 	t3_tp.priority=80;
 	t3_tp.dmiss=0;
 	pthread_attr_init(&t3_attr);
@@ -405,13 +407,15 @@ cpu_set_t	cpuset;
 		draw_deadline_pcp(t3_tp, 3);
 	}
 
-	time_add_ms(&t, time_scale[pox_ts]);
+	delta = 50;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 
 	//create task 4
 	t4_tp.arg=0;
-	t4_tp.period=1800;
-	t4_tp.deadline=1600;
+	t4_tp.period=1200;
+	t4_tp.deadline=1000;
 	t4_tp.priority=90;
 	t4_tp.dmiss=0;
 	pthread_attr_init(&t4_attr);
@@ -864,9 +868,6 @@ int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
-/*	t.tv_nsec = 0;
-	t.tv_sec = 0;
-	time_add_ms(&t, time_scale[pox_ts]);*/
 
 	while(1){
 		use = true;
@@ -879,7 +880,7 @@ int		cpu;
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
 			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
+			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 1;
@@ -887,7 +888,7 @@ int		cpu;
 
 			pthread_mutex_lock(&mux_b_pip);
 			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
+			time_add_ms(&t, 400);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 1;
@@ -897,7 +898,7 @@ int		cpu;
 			pthread_mutex_unlock(&mux_b_pip);
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
+			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 			}while(time_cmp(at, t)<=0);
@@ -908,7 +909,7 @@ int		cpu;
 		else{
 			pthread_mutex_lock(&mux_a_pcp);
 			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
+			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 1;
@@ -916,7 +917,7 @@ int		cpu;
 
 			pthread_mutex_lock(&mux_b_pcp);
 			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
+			time_add_ms(&t, 400);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 1;
@@ -926,7 +927,7 @@ int		cpu;
 			pthread_mutex_unlock(&mux_b_pcp);
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
+			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 			}while(time_cmp(at, t)<=0);
@@ -946,13 +947,11 @@ void * t_task_2(void * arg)
 {
 struct	task_par	*tp;
 struct	timespec t;
+struct	timespec at;
 int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
-	t.tv_nsec = 0;
-	t.tv_sec = 0;
-	time_add_ms(&t, 2*time_scale[pox_ts]);
 
 	while(1){
 		use = true;
@@ -964,16 +963,28 @@ int		cpu;
 			printf("ERRORE CPU ");
 		if(pip){
 			pthread_mutex_lock(&mux_b_pip);
-			b = 2;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				b = 2;
+			}while(time_cmp(at, t)<=0);
 			b = 0;
+
 			pthread_mutex_unlock(&mux_b_pip);
 		}
 		else{
 			pthread_mutex_lock(&mux_b_pcp);
-			b = 2;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				b = 2;
+			}while(time_cmp(at, t)<=0);
 			b = 0;
+
 			pthread_mutex_unlock(&mux_b_pcp);
 		}
 		wait_for_period(tp);
@@ -987,6 +998,8 @@ int		cpu;
 void * t_task_3(void * arg)
 {
 struct	task_par	*tp;
+struct	timespec t;
+struct	timespec at;
 int		cpu;
 
 	tp= (struct task_par*)arg;
@@ -998,6 +1011,13 @@ int		cpu;
 		task[nu]=3;
 		nu++;
 		cpu = sched_getcpu();
+
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 300);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+		}while(time_cmp(at, t)<=0);
+
 		if(cpu!=0)
 			printf("ERRORE CPU ");
 		wait_for_period(tp);
@@ -1012,13 +1032,11 @@ void * t_task_4(void * arg)
 {
 struct	task_par	*tp;
 struct	timespec t;
+struct	timespec at;
 int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
-	t.tv_nsec = 0;
-	t.tv_sec = 0;
-	time_add_ms(&t, 2*time_scale[pox_ts]);
 
 	while(1){
 		use = true;
@@ -1030,16 +1048,28 @@ int		cpu;
 		nu++;
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
-			a = 4;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				a = 4;
+			}while(time_cmp(at, t)<=0);
 			a = 0;
+
 			pthread_mutex_unlock(&mux_a_pip);
 		}
 		else{
 			pthread_mutex_lock(&mux_a_pcp);
-			a = 4;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 300);
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				a = 4;
+			}while(time_cmp(at, t)<=0);
 			a = 0;
+
 			pthread_mutex_unlock(&mux_a_pcp);
 		}
 		wait_for_period(tp);
