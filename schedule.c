@@ -107,26 +107,32 @@ int					H_TASK;
 pthread_t			grafic_tid;
 struct task_par		grafic_tp;
 pthread_attr_t		grafic_attr;
+struct sched_param	grafic_par;
 
 pthread_t			t1_tid;
 struct task_par		t1_tp;
 pthread_attr_t		t1_attr;
+struct sched_param	t1_par;
 
 pthread_t			t2_tid;
 struct task_par		t2_tp;
 pthread_attr_t		t2_attr;
+struct sched_param	t2_par;
 
 pthread_t			t3_tid;
 struct task_par		t3_tp;
 pthread_attr_t		t3_attr;
+struct sched_param	t3_par;
 
 pthread_t			t4_tid;
 struct task_par		t4_tp;
 pthread_attr_t		t4_attr;
+struct sched_param	t4_par;
 
 pthread_t			workload_tid;
 struct task_par		workload_tp;
 pthread_attr_t		workload_attr;
+struct sched_param	workload_par;
 
 int					max_prio_a = 90;
 int					max_prio_b = 70;
@@ -305,6 +311,9 @@ FILE		*f_sched_budget;
 	pthread_attr_init(&workload_attr);
 	pthread_attr_setdetachstate(&workload_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&workload_attr, sizeof(cpuset), &cpuset);
+	pthread_attr_setinheritsched(&workload_attr, PTHREAD_EXPLICIT_SCHED);
+	workload_par.__sched_priority=workload_tp.priority;
+	pthread_attr_setschedparam(&workload_attr, &workload_par);
 	pthread_create(&grafic_tid, &workload_attr, workload_task, &workload_tp);
 
 	//create grafic task
@@ -352,6 +361,9 @@ cpu_set_t	cpuset;
 	pthread_attr_init(&t1_attr);
 	pthread_attr_setdetachstate(&t1_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t1_attr, sizeof(cpuset), &cpuset);
+	pthread_attr_setinheritsched(&t1_attr, PTHREAD_EXPLICIT_SCHED);
+	t1_par.__sched_priority=t1_tp.priority;
+	pthread_attr_setschedparam(&t1_attr, &t1_par);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
 
 	if(pip){
@@ -377,6 +389,9 @@ cpu_set_t	cpuset;
 	pthread_attr_init(&t2_attr);
 	pthread_attr_setdetachstate(&t2_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t2_attr, sizeof(cpuset), &cpuset);
+	pthread_attr_setinheritsched(&t2_attr, PTHREAD_EXPLICIT_SCHED);
+	t2_par.__sched_priority=t2_tp.priority;
+	pthread_attr_setschedparam(&t2_attr, &t2_par);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
 	if(pip){
@@ -402,6 +417,9 @@ cpu_set_t	cpuset;
 	pthread_attr_init(&t3_attr);
 	pthread_attr_setdetachstate(&t3_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t3_attr, sizeof(cpuset), &cpuset);
+	pthread_attr_setinheritsched(&t3_attr, PTHREAD_EXPLICIT_SCHED);
+	t3_par.__sched_priority=t3_tp.priority;
+	pthread_attr_setschedparam(&t3_attr, &t3_par);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
 
 	if(pip){
@@ -427,6 +445,9 @@ cpu_set_t	cpuset;
 	pthread_attr_init(&t4_attr);
 	pthread_attr_setdetachstate(&t4_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t4_attr, sizeof(cpuset), &cpuset);
+	pthread_attr_setinheritsched(&t4_attr, PTHREAD_EXPLICIT_SCHED);
+	t4_par.__sched_priority=t4_tp.priority;
+	pthread_attr_setschedparam(&t4_attr, &t4_par);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
 	if(pip){
