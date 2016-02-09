@@ -263,6 +263,7 @@ char s[60];
 void setup(void)
 {
 cpu_set_t	cpuset;
+FILE		*f_sched_budget;
 
 	allegro_init();
 	install_keyboard();
@@ -276,6 +277,10 @@ cpu_set_t	cpuset;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
+	f_sched_budget=fopen("/proc/sys/kernel/sched_rt_runtime_us","w");
+	fprintf(f_sched_budget,"1000000");
+	fclose(f_sched_budget);
+
 
 	write_instruction();
 
