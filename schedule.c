@@ -825,6 +825,7 @@ void current_task(int tsk)
 bool	task_r = false;
 int		i;
 
+	use=true;
 	run_task=tsk;
 	for(i= 0; i < nu; i++)
 	{
@@ -1151,7 +1152,7 @@ int		cpu;
 		set_period(tp);
 
 		while(1){
-			if(!use)
+			if((!use)&(free_ms<time_scale[pox_ts]))
 				free_ms++;
 			use = false;
 			cpu = sched_getcpu();
