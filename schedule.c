@@ -50,6 +50,10 @@ void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 
 void create_task(void);
+void create_task_1(void);
+void create_task_2(void);
+void create_task_3(void);
+void create_task_4(void);
 void stop_task(void);
 
 void change_time_scale(void);
@@ -338,12 +342,8 @@ void create_task(void)
 {
 struct		timespec t;
 int			delta = 0;
-cpu_set_t	cpuset;
 
 	stop=0;
-
-	CPU_ZERO(&cpuset);
-	CPU_SET(0, &cpuset);
 
 	if(pip){
 		create_mux_pip();
@@ -351,6 +351,37 @@ cpu_set_t	cpuset;
 	else{
 		create_mux_pcp();
 	}
+
+	create_task_1();
+
+	delta = 150;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+	create_task_2();
+
+	delta = 50;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+	create_task_3();
+
+	delta = 50;
+	t.tv_sec = 0;
+	t.tv_nsec = delta*1000000;
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+
+	create_task_4();
+}
+
+void create_task_1(void)
+{
+cpu_set_t	cpuset;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
 
 	//create task 1
 	t1_tp.arg=0;
@@ -374,11 +405,14 @@ cpu_set_t	cpuset;
 		draw_activation_pcp(t1_tp, 1);
 		draw_deadline_pcp(t1_tp, 1);
 	}
+}
 
-	delta = 150;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+void create_task_2(void)
+{
+cpu_set_t	cpuset;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
 
 	//create task 2
 	t2_tp.arg=0;
@@ -402,11 +436,14 @@ cpu_set_t	cpuset;
 		draw_activation_pcp(t2_tp, 2);
 		draw_deadline_pcp(t2_tp, 2);
 	}
+}
 
-	delta = 50;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+void create_task_3(void)
+{
+cpu_set_t	cpuset;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
 
 	//create task 3
 	t3_tp.arg=0;
@@ -430,11 +467,14 @@ cpu_set_t	cpuset;
 		draw_activation_pcp(t3_tp, 3);
 		draw_deadline_pcp(t3_tp, 3);
 	}
+}
 
-	delta = 50;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+void create_task_4(void)
+{
+cpu_set_t	cpuset;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0, &cpuset);
 
 	//create task 4
 	t4_tp.arg=0;
