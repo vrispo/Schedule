@@ -49,6 +49,8 @@ void write_instruction(void);
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 
+void control_CPU(char *task_name, pthread_t	thread);
+
 void create_task(void);
 void create_task_1(void);
 void create_task_2(void);
@@ -159,17 +161,15 @@ int main(int argc, char * argv[])
 {
 struct		timespec t;
 int 		delta = 500;
-cpu_set_t	cpuset, cpuget;
+cpu_set_t	cpuset;
 pthread_t	thread;
-int			cpu;
-int			ncpu;
 
     thread = pthread_self();
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
-
 	if (pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
 		perror("pthread_setaffinity_np");
+
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
 	setup();
@@ -181,20 +181,36 @@ int			ncpu;
 		task[nu]=0;
 		nu++;
 		analysis_key();
-		cpu = sched_getcpu();
-		if(cpu!=0)
-			printf("ERRORE CPU MAIN ");
-		 pthread_getaffinity_np(thread, sizeof(cpuget), &cpuget);
-		 ncpu = CPU_COUNT(&cpuget);
-		 if(ncpu!=1)
-			 printf("more eligible CPU for main:%d",ncpu);
-		 if(CPU_ISSET(0, &cpuget)==0)
-			 printf("CPU 0 non in the set");
+
+		control_CPU("MAIN",thread);
 		clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
 	}
 
 	allegro_exit();
 	return 0;
+}
+
+//--------------------------------------------------------------------------
+//CONTROL IN THE TASK IS RUNNING ON CORRECT CPU
+//--------------------------------------------------------------------------
+
+void control_CPU(char *task_name, pthread_t	thread)
+{
+cpu_set_t	cpuget;
+int			ncpu;
+int			cpu;
+
+	cpu = sched_getcpu();
+	if(cpu!=0)
+		printf("ERROR corrent cpu %s", task_name);
+	pthread_getaffinity_np(thread,sizeof(cpuget),&cpuget);
+	ncpu=CPU_COUNT(&cpuget);
+	if(ncpu!=1){
+		printf("ERROR more than one elegible CPU for: %s", task_name);
+	}
+	if(CPU_ISSET(0, &cpuget)==0){
+		printf("ERROR cpu 0 not in the elegible set of: %s", task_name);
+	}
 }
 
 //--------------------------------------------------------------------------
@@ -956,7 +972,6 @@ void * t_task_1(void * arg)
 struct 	task_par *tp;
 struct	timespec t;
 struct	timespec at;
-int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -966,9 +981,7 @@ int		cpu;
 		run_task=1;
 		task[nu]=1;
 		nu++;
-		cpu = sched_getcpu();
-		if(cpu!=0)
-			printf("ERRORE CPU ");
+		control_CPU("TASK 1",pthread_self());
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
 			clock_gettime(CLOCK_MONOTONIC, &t);
@@ -1046,7 +1059,6 @@ void * t_task_2(void * arg)
 struct	task_par	*tp;
 struct	timespec t;
 struct	timespec at;
-int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -1056,9 +1068,7 @@ int		cpu;
 		run_task=2;
 		task[nu]=2;
 		nu++;
-		cpu = sched_getcpu();
-		if(cpu!=0)
-			printf("ERRORE CPU ");
+		control_CPU("TASK 2",pthread_self());
 		if(pip){
 			pthread_mutex_lock(&mux_b_pip);
 
@@ -1100,7 +1110,6 @@ void * t_task_3(void * arg)
 struct	task_par	*tp;
 struct	timespec t;
 struct	timespec at;
-int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -1110,7 +1119,6 @@ int		cpu;
 		run_task=3;
 		task[nu]=3;
 		nu++;
-		cpu = sched_getcpu();
 
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 300);
@@ -1119,8 +1127,7 @@ int		cpu;
 			current_task(3);
 		}while(time_cmp(at, t)<=0);
 
-		if(cpu!=0)
-			printf("ERRORE CPU ");
+		control_CPU("TASK 3",pthread_self());
 		wait_for_period(tp);
 	}
 }
@@ -1134,7 +1141,6 @@ void * t_task_4(void * arg)
 struct	task_par	*tp;
 struct	timespec t;
 struct	timespec at;
-int		cpu;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
@@ -1143,9 +1149,7 @@ int		cpu;
 		use = true;
 		run_task=4;
 		task[nu]=4;
-		cpu = sched_getcpu();
-		if(cpu!=0)
-			printf("ERRORE CPU ");
+		control_CPU("TASK 4",pthread_self());
 		nu++;
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
