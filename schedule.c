@@ -414,12 +414,12 @@ cpu_set_t	cpuset;
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
 
 	if(pip){
-		draw_activation_pip(t1_tp, 1);
 		draw_deadline_pip(t1_tp, 1);
+		draw_activation_pip(t1_tp, 1);
 	}
 	else{
-		draw_activation_pcp(t1_tp, 1);
 		draw_deadline_pcp(t1_tp, 1);
+		draw_activation_pcp(t1_tp, 1);
 	}
 }
 
@@ -445,12 +445,12 @@ cpu_set_t	cpuset;
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
 	if(pip){
-		draw_activation_pip(t2_tp, 2);
 		draw_deadline_pip(t2_tp, 2);
+		draw_activation_pip(t2_tp, 2);
 	}
 	else{
-		draw_activation_pcp(t2_tp, 2);
 		draw_deadline_pcp(t2_tp, 2);
+		draw_activation_pcp(t2_tp, 2);
 	}
 }
 
@@ -476,12 +476,12 @@ cpu_set_t	cpuset;
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
 
 	if(pip){
-		draw_activation_pip(t3_tp, 3);
 		draw_deadline_pip(t3_tp, 3);
+		draw_activation_pip(t3_tp, 3);
 	}
 	else{
-		draw_activation_pcp(t3_tp, 3);
 		draw_deadline_pcp(t3_tp, 3);
+		draw_activation_pcp(t3_tp, 3);	
 	}
 }
 
