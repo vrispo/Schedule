@@ -507,12 +507,12 @@ cpu_set_t	cpuset;
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
 	if(pip){
-		draw_activation_pip(t4_tp, 4);
 		draw_deadline_pip(t4_tp, 4);
+		draw_activation_pip(t4_tp, 4);
 	}
 	else{
-		draw_activation_pcp(t4_tp, 4);
 		draw_deadline_pcp(t4_tp, 4);
+		draw_activation_pcp(t4_tp, 4);
 	}
 }
 
