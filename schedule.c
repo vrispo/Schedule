@@ -383,17 +383,29 @@ int			delta = 0;
 
 	create_task_2();
 
-	delta = 50;
+	/*delta = 50;
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);*/
+	
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	time_add_ms(&t, 50);
+	do{
+		clock_gettime(CLOCK_MONOTONIC, &at);
+	}while(time_cmp(at, t)<=0);
 
 	create_task_3();
 
-	delta = 50;
+	/*delta = 50;
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);*/
+	
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	time_add_ms(&t, 50);
+	do{
+		clock_gettime(CLOCK_MONOTONIC, &at);
+	}while(time_cmp(at, t)<=0);
 
 	create_task_4();
 }
