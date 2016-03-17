@@ -356,7 +356,7 @@ FILE		*f_sched_budget;
 
 void create_task(void)
 {
-struct		timespec t;
+struct		timespec t,at;
 int			delta = 0;
 
 	stop=0;
@@ -370,10 +370,16 @@ int			delta = 0;
 
 	create_task_1();
 
-	delta = 150;
+	/*delta = 150;
 	t.tv_sec = 0;
 	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);*/
+	
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	time_add_ms(&t, 150);
+	do{
+		clock_gettime(CLOCK_MONOTONIC, &at);
+	}while(time_cmp(at, t)<=0);
 
 	create_task_2();
 
