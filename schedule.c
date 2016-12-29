@@ -410,6 +410,7 @@ int			delta = 0;
 void create_task_1(void)
 {
 cpu_set_t	cpuset;
+int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -428,19 +429,18 @@ cpu_set_t	cpuset;
 	pthread_attr_setschedparam(&t1_attr, &t1_par);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
 
-	if(pip){
-		draw_deadline(t1_tp, 1, 0);
-		draw_activation(t1_tp, 1, 0);
-	}
-	else{
-		draw_deadline(t1_tp, 1, 1);
-		draw_activation(t1_tp, 1, 1);
-	}
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t1_tp, 1, mod);
+	draw_activation(t1_tp, 1, mod);
 }
 
 void create_task_2(void)
 {
 cpu_set_t	cpuset;
+int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -459,19 +459,18 @@ cpu_set_t	cpuset;
 	pthread_attr_setschedparam(&t2_attr, &t2_par);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
 
-	if(pip){
-		draw_deadline(t2_tp, 2, 0);
-		draw_activation(t2_tp, 2, 0);
-	}
-	else{
-		draw_deadline(t2_tp, 2, 1);
-		draw_activation(t2_tp, 2, 1);
-	}
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t2_tp, 2, mod);
+	draw_activation(t2_tp, 2, mod);
 }
 
 void create_task_3(void)
 {
 cpu_set_t	cpuset;
+int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -490,19 +489,18 @@ cpu_set_t	cpuset;
 	pthread_attr_setschedparam(&t3_attr, &t3_par);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
 
-	if(pip){
-		draw_deadline(t3_tp, 3, 0);
-		draw_activation(t3_tp, 3, 0);
-	}
-	else{
-		draw_deadline(t3_tp, 3, 1);
-		draw_activation(t3_tp, 3, 1);	
-	}
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t3_tp, 3, mod);
+	draw_activation(t3_tp, 3, mod);	
 }
 
 void create_task_4(void)
 {
 cpu_set_t	cpuset;
+int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -521,14 +519,12 @@ cpu_set_t	cpuset;
 	pthread_attr_setschedparam(&t4_attr, &t4_par);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
 
-	if(pip){
-		draw_deadline(t4_tp, 4, 0);
-		draw_activation(t4_tp, 4, 0);
-	}
-	else{
-		draw_deadline(t4_tp, 4, 1);
-		draw_activation(t4_tp, 4, 1);
-	}
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t4_tp, 4, mod);
+	draw_activation(t4_tp, 4, mod);
 }
 
 //--------------------------------------------------------------------------
