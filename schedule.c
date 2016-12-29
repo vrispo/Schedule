@@ -332,7 +332,7 @@ FILE		*f_sched_budget;
 	workload_par.__sched_priority=workload_tp.priority;
 	pthread_attr_setschedparam(&workload_attr, &workload_par);
 	pthread_create(&grafic_tid, &workload_attr, workload_task, &workload_tp);
-
+	
 	//create grafic task
 	grafic_tp.arg=0;
 	grafic_tp.period=time_scale[pox_ts];
@@ -344,6 +344,7 @@ FILE		*f_sched_budget;
 	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
 
+	//create generic tasks
 	create_task();
 }
 
@@ -405,12 +406,19 @@ int			delta = 0;
 	}while(time_cmp(at, t)<=0);
 
 	create_task_4();
+	
+/*	//draw the generic tasks parameters
+	if(pip){					
+		draw_task_parameter(0);
+	}
+	else{
+		draw_task_parameter(1);
+	}*/
 }
 
 void create_task_1(void)
 {
 cpu_set_t	cpuset;
-int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -428,19 +436,11 @@ int			mod;
 	t1_par.__sched_priority=t1_tp.priority;
 	pthread_attr_setschedparam(&t1_attr, &t1_par);
 	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
-
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t1_tp, 1, mod);
-	draw_activation(t1_tp, 1, mod);
 }
 
 void create_task_2(void)
 {
 cpu_set_t	cpuset;
-int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -458,19 +458,11 @@ int			mod;
 	t2_par.__sched_priority=t2_tp.priority;
 	pthread_attr_setschedparam(&t2_attr, &t2_par);
 	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
-
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t2_tp, 2, mod);
-	draw_activation(t2_tp, 2, mod);
 }
 
 void create_task_3(void)
 {
 cpu_set_t	cpuset;
-int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -488,19 +480,11 @@ int			mod;
 	t3_par.__sched_priority=t3_tp.priority;
 	pthread_attr_setschedparam(&t3_attr, &t3_par);
 	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
-
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t3_tp, 3, mod);
-	draw_activation(t3_tp, 3, mod);	
 }
 
 void create_task_4(void)
 {
 cpu_set_t	cpuset;
-int			mod;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
@@ -518,13 +502,6 @@ int			mod;
 	t4_par.__sched_priority=t4_tp.priority;
 	pthread_attr_setschedparam(&t4_attr, &t4_par);
 	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
-
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t4_tp, 4, mod);
-	draw_activation(t4_tp, 4, mod);
 }
 
 //--------------------------------------------------------------------------
@@ -604,14 +581,14 @@ void create_mux_pcp(void)
 
 void draw_task_parameter(int mod)
 {
-	draw_activation(t1_tp, 1, mod);
-	draw_activation(t2_tp, 2, mod);
-	draw_activation(t3_tp, 3, mod);
-	draw_activation(t4_tp, 4, mod);
 	draw_deadline(t1_tp, 1, mod);
 	draw_deadline(t2_tp, 2, mod);
 	draw_deadline(t3_tp, 3, mod);
 	draw_deadline(t4_tp, 4, mod);
+	draw_activation(t1_tp, 1, mod);
+	draw_activation(t2_tp, 2, mod);
+	draw_activation(t3_tp, 3, mod);
+	draw_activation(t4_tp, 4, mod);
 }
 
 //--------------------------------------------------------------------------
@@ -721,14 +698,17 @@ double			xd,nat;
 struct timespec	at;
 
 	clock_gettime(CLOCK_MONOTONIC, &at);
-
+	
 	xd=0;
 	time_sub_ms(tp.dl, at, &xd);
 	time_sub_ms(tp.at, at, &nat);
-	xd=x+((xd/time_scale[pox_ts])*5);
+	
+	xd=((x+(xd/time_scale[pox_ts]))*5);
+	
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),12);
-		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts])*5);
+		if(xd>=0)
+			line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),12);
+		xd=((x+((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts]))*5);
 	}
 }
 
@@ -744,13 +724,14 @@ struct timespec	at;
 
 	clock_gettime(CLOCK_MONOTONIC, &at);
 
-	//disegna le varie deadline per ogni task nel grafico pip
 	xd=0;
 	time_sub_ms(tp.at, at, &nat);
-	xd=x+((nat/time_scale[pox_ts])*5);
+	nat=nat-tp.period;
+	xd=((x+(nat/time_scale[pox_ts]))*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),14);
-		xd=x+(((nat+(j*tp.period))/time_scale[pox_ts])*5);
+		if(xd>=0)
+			line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),14);
+		xd=((x+((nat+(j*tp.period))/time_scale[pox_ts]))*5);
 	}
 }
 
@@ -860,7 +841,7 @@ struct timespec	at;
 int				i=0;
 int				mod;
 
-	set_period(&grafic_tp);
+	set_period(&grafic_tp);	
 
 	while(1){
 		if(!stop){
@@ -914,12 +895,21 @@ int				mod;
 
 void * t_task_1(void * arg)
 {
-struct 	task_par *tp;
-struct	timespec t;
-struct	timespec at;
+struct 	task_par	*tp;
+struct	timespec	t;
+struct	timespec	at;
+int					mod;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
+	
+	//draw parameters
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t1_tp, 1, mod);
+	draw_activation(t1_tp, 1, mod);
 
 	while(1){
 		use = true;
@@ -1002,11 +992,20 @@ struct	timespec at;
 void * t_task_2(void * arg)
 {
 struct	task_par	*tp;
-struct	timespec t;
-struct	timespec at;
+struct	timespec 	t;
+struct	timespec 	at;
+int					mod;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
+	
+	//draw parameters
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t2_tp, 2, mod);
+	draw_activation(t2_tp, 2, mod);
 
 	while(1){
 		use = true;
@@ -1053,11 +1052,20 @@ struct	timespec at;
 void * t_task_3(void * arg)
 {
 struct	task_par	*tp;
-struct	timespec t;
-struct	timespec at;
+struct	timespec 	t;
+struct	timespec 	at;
+int					mod;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
+	
+	//draw parameters
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t3_tp, 3, mod);
+	draw_activation(t3_tp, 3, mod);
 
 	while(1){
 		use = true;
@@ -1084,11 +1092,20 @@ struct	timespec at;
 void * t_task_4(void * arg)
 {
 struct	task_par	*tp;
-struct	timespec t;
-struct	timespec at;
+struct	timespec 	t;
+struct	timespec 	at;
+int					mod;
 
 	tp= (struct task_par*)arg;
 	set_period(tp);
+	
+	//draw parameters
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	draw_deadline(t4_tp, 4, mod);
+	draw_activation(t4_tp, 4, mod);
 
 	while(1){
 		use = true;
