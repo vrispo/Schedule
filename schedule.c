@@ -103,10 +103,9 @@ int					stop=0;
 
 bool				pip = TRUE;
 
-int					ORIGIN_PIP_Y;
-int					ORIGIN_PIPW_Y;
-int					ORIGIN_PCP_Y;
-int					ORIGIN_PCPW_Y;
+//#0:PIP #1:PCP
+int					ORIGIN_Y[2];
+int					ORIGIN_WL_Y[2];
 
 int					H_TASK;
 
@@ -312,14 +311,14 @@ FILE		*f_sched_budget;
 
 	//grafici
 	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
-	ORIGIN_PIP_Y=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
-	ORIGIN_PIPW_Y=ORIGIN_PIP_Y+SPACE+GRAFIC_H;
-	ORIGIN_PCP_Y=ORIGIN_PIPW_Y+SPACE+GRAFIC_H;
-	ORIGIN_PCPW_Y=ORIGIN_PCP_Y+SPACE+GRAFIC_H;
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+	ORIGIN_Y[0]=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
+	ORIGIN_WL_Y[0]=ORIGIN_Y[0]+SPACE+GRAFIC_H;
+	ORIGIN_Y[1]=ORIGIN_WL_Y[0]+SPACE+GRAFIC_H;
+	ORIGIN_WL_Y[1]=ORIGIN_Y[1]+SPACE+GRAFIC_H;
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 
 	//create workload task
 	workload_tp.arg=0;
@@ -671,12 +670,12 @@ bool	keyp=FALSE;
 			case KEY_SPACE:
 			{	if(stop){
 					if(pip){
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
 					}
 					else{
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
+						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 					}
 					pwl = 0;
 					wl = 0;
@@ -694,8 +693,8 @@ bool	keyp=FALSE;
 			{
 				if(pip){
 					stop_task();
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 					pwl = 0;
 					wl = 0;
 					free_ms = 0;
@@ -707,8 +706,8 @@ bool	keyp=FALSE;
 				}
 				else{
 					stop_task();
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
 					pwl = 0;
 					wl = 0;
 					free_ms = 0;
@@ -748,7 +747,7 @@ struct timespec	at;
 	time_sub_ms(tp.at, at, &nat);
 	xd=x+((xd/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),12);
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[0]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[0]-(i*(H_TASK+10))-H_TASK),12);
 		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
@@ -770,7 +769,7 @@ struct timespec	at;
 	time_sub_ms(tp.at, at, &nat);
 	xd=x+((xd/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),12);
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[1]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[1]-(i*(H_TASK+10))-H_TASK),12);
 		xd=x+(((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
@@ -792,7 +791,7 @@ struct timespec	at;
 	time_sub_ms(tp.at, at, &nat);
 	xd=x+((nat/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PIP_Y-(i*(H_TASK+10))-H_TASK),14);
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[0]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[0]-(i*(H_TASK+10))-H_TASK),14);
 		xd=x+(((nat+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
@@ -814,7 +813,7 @@ struct timespec	at;
 	time_sub_ms(tp.at, at, &nat);
 	xd=x+((xd/time_scale[pox_ts])*5);
 	for(j=0; xd<GRAFIC_W; j++){
-		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_PCP_Y-(i*(H_TASK+10))-H_TASK),14);
+		line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[1]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[1]-(i*(H_TASK+10))-H_TASK),14);
 		xd=x+(((nat+(j*tp.period))/time_scale[pox_ts])*5);
 	}
 }
@@ -923,6 +922,7 @@ void * grafic_task(void * arg)
 {
 struct timespec	at;
 int				i=0;
+int				mod;
 
 	set_period(&grafic_tp);
 
@@ -933,44 +933,35 @@ int				i=0;
 			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
 			//printf("freems=%d wl=%f nu=%d+ ", free_ms, wl, nu);
 			free_ms = 0;
-			if(pip){
-				clock_gettime(CLOCK_MONOTONIC, &at);
+			
+			if(pip)
+				mod=0;
+			else
+				mod=1;
+				
+			clock_gettime(CLOCK_MONOTONIC, &at);
 
-				if(run_task!=7)
-					multi_exec(nu, ORIGIN_GRAFIC_X, ORIGIN_PIP_Y);
+			if(run_task!=7)
+				multi_exec(nu, ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
 
-				draw_resource(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y);
+			draw_resource(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
 
-				line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_PIPW_Y-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PIPW_Y-(GRAFIC_H*wl)), 4);
+			line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*wl)), 4);
 
-				run_task = 7;
-				x++;
-				if((x*5)>=GRAFIC_W){
-					x=0;
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIP_Y, "PIP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PIPW_Y, "PIP workload", false);
+			run_task = 7;
+			x++;
+			if((x*5)>=GRAFIC_W){
+				x=0;
+				if(mod==0){					
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
 					draw_task_parameter('i');
 				}
-			}
-			//pcp case
-			else{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-
-				if(run_task!=7)
-					multi_exec(nu, ORIGIN_GRAFIC_X, ORIGIN_PCP_Y);
-
-				draw_resource(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y);
-
-				line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_PCPW_Y-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_PCPW_Y-(GRAFIC_H*wl)), 4);
-
-				run_task = 7;
-				x++;
-				if((x*5)>=GRAFIC_W){
-					x=0;
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCP_Y, "PCP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_PCPW_Y, "PCP workload", false);
+				else{
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 					draw_task_parameter('c');
-				}
+				}			
 			}
 		}
 		//printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
