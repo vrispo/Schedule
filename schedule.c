@@ -43,7 +43,7 @@
 
 void setup (void);
 void setup_grafic(int x, int y, char s[], bool ng);
-void draw_task_parameter(char g);
+void draw_task_parameter(int mod);
 void write_instruction(void);
 
 void analysis_key(void);
@@ -602,30 +602,16 @@ void create_mux_pcp(void)
 //DRAW PARAMETER TASK IN GRAFIC PIP OR PCP
 //--------------------------------------------------------------------------
 
-void draw_task_parameter(char g)
+void draw_task_parameter(int mod)
 {
-	switch(g){
-		case 'i':
-			draw_activation(t1_tp, 1, 0);
-			draw_activation(t2_tp, 2, 0);
-			draw_activation(t3_tp, 3, 0);
-			draw_activation(t4_tp, 4, 0);
-			draw_deadline(t1_tp, 1, 0);
-			draw_deadline(t2_tp, 2, 0);
-			draw_deadline(t3_tp, 3, 0);
-			draw_deadline(t4_tp, 4, 0);
-			break;
-		case 'c':
-			draw_activation(t1_tp, 1, 1);
-			draw_activation(t2_tp, 2, 1);
-			draw_activation(t3_tp, 3, 1);
-			draw_activation(t4_tp, 4, 1);
-			draw_deadline(t1_tp, 1, 1);
-			draw_deadline(t2_tp, 2, 1);
-			draw_deadline(t3_tp, 3, 1);
-			draw_deadline(t4_tp, 4, 1);
-			break;
-	}
+	draw_activation(t1_tp, 1, mod);
+	draw_activation(t2_tp, 2, mod);
+	draw_activation(t3_tp, 3, mod);
+	draw_activation(t4_tp, 4, mod);
+	draw_deadline(t1_tp, 1, mod);
+	draw_deadline(t2_tp, 2, mod);
+	draw_deadline(t3_tp, 3, mod);
+	draw_deadline(t4_tp, 4, mod);
 }
 
 //--------------------------------------------------------------------------
@@ -905,12 +891,12 @@ int				mod;
 				if(mod==0){					
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
-					draw_task_parameter('i');
+					draw_task_parameter(mod);
 				}
 				else{
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
 					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
-					draw_task_parameter('c');
+					draw_task_parameter(mod);
 				}			
 			}
 		}
