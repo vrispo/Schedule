@@ -85,15 +85,17 @@ void create_mux_pcp(void);
 int					time_scale[3] = {50, 75, 100};
 int					pox_ts = 0;
 
-//struct 			timespec zero_time;
+char				phgrafic[2][4]= {"PIP","PCP"};
+char				phgraficwl[2][13]= {"PIP workload","PCP workload"};
+
 int					x = 0;
 int					task[5];
 int					nu = 0;
 
 bool				use = false;
-int					free_ms = 0;	//number of ms that the CPU is free
-double				wl = 0;			//actual workload
-double				pwl = 0;		//previous workload
+int					free_ms = 0;		//number of ms that the CPU is free
+double				wl = 0;				//actual workload
+double				pwl = 0;			//previous workload
 
 bool				run = TRUE;
 int					run_task;
@@ -101,9 +103,8 @@ int					stop=0;
 
 bool				pip = TRUE;
 
-//#0:PIP #1:PCP
-int					ORIGIN_Y[2];
-int					ORIGIN_WL_Y[2];
+int					ORIGIN_Y[2];		//#0:PIP #1:PCP
+int					ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
 
 int					H_TASK;
 
@@ -151,7 +152,11 @@ pthread_mutex_t 	mux_b_pcp;
 pthread_mutexattr_t	mattr_pcp;
 
 //--------------------------------------------------------------------------
-//FUNCTION DEFINITIONS
+//						FUNCTION DEFINITIONS
+//--------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------
+//MAIN
 //--------------------------------------------------------------------------
 
 int main(int argc, char * argv[])
@@ -313,9 +318,9 @@ FILE		*f_sched_budget;
 	ORIGIN_WL_Y[0]=ORIGIN_Y[0]+SPACE+GRAFIC_H;
 	ORIGIN_Y[1]=ORIGIN_WL_Y[0]+SPACE+GRAFIC_H;
 	ORIGIN_WL_Y[1]=ORIGIN_Y[1]+SPACE+GRAFIC_H;
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], phgrafic[0] , true);
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
+	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], phgrafic[1], true);
 	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 
 	//create workload task
@@ -355,7 +360,6 @@ FILE		*f_sched_budget;
 void create_task(void)
 {
 struct		timespec t,at;
-int			delta = 0;
 
 	stop=0;
 
@@ -367,11 +371,6 @@ int			delta = 0;
 	}
 
 	create_task_1();
-
-	/*delta = 150;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);*/
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	time_add_ms(&t, 150);
@@ -380,11 +379,6 @@ int			delta = 0;
 	}while(time_cmp(at, t)<=0);
 
 	create_task_2();
-
-	/*delta = 50;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);*/
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	time_add_ms(&t, 50);
@@ -393,11 +387,6 @@ int			delta = 0;
 	}while(time_cmp(at, t)<=0);
 
 	create_task_3();
-
-	/*delta = 50;
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);*/
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	time_add_ms(&t, 50);
@@ -406,14 +395,6 @@ int			delta = 0;
 	}while(time_cmp(at, t)<=0);
 
 	create_task_4();
-	
-/*	//draw the generic tasks parameters
-	if(pip){					
-		draw_task_parameter(0);
-	}
-	else{
-		draw_task_parameter(1);
-	}*/
 }
 
 void create_task_1(void)
@@ -612,6 +593,7 @@ void analysis_key(void)
 {
 char	scan, ascii;
 bool	keyp=FALSE;
+int		mod;
 
 	keyp=keypressed();
 	if(keyp){
@@ -625,15 +607,14 @@ bool	keyp=FALSE;
 				break;
 			}
 			case KEY_SPACE:
-			{	if(stop){
-					if(pip){
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
-					}
-					else{
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
-						setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
-					}
+			{	
+				if(stop){
+					if(pip)
+						mod=0;
+					else
+						mod=1;
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
+					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
 					pwl = 0;
 					wl = 0;
 					free_ms = 0;
@@ -648,32 +629,21 @@ bool	keyp=FALSE;
 			}
 			case KEY_RIGHT:
 			{
-				if(pip){
-					stop_task();
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
-					pwl = 0;
-					wl = 0;
-					free_ms = 0;
-					x=0;
-					a=0;
-					b=0;
-					pip=false;
-					create_task();
-				}
-				else{
-					stop_task();
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
-					pwl = 0;
-					wl = 0;
-					free_ms = 0;
-					x=0;
-					a=0;
-					b=0;
-					pip=true;
-					create_task();
-				}
+				if(pip)
+					mod=1;
+				else
+					mod=0;				
+				stop_task();
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
+				pwl = 0;
+				wl = 0;
+				free_ms = 0;
+				x=0;
+				a=0;
+				b=0;
+				pip=!pip;
+				create_task();
 				break;
 			}
 			case KEY_UP:
@@ -868,17 +838,10 @@ int				mod;
 			run_task = 7;
 			x++;
 			if((x*5)>=GRAFIC_W){
-				x=0;
-				if(mod==0){					
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], "PIP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
-					draw_task_parameter(mod);
-				}
-				else{
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], "PCP", true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
-					draw_task_parameter(mod);
-				}			
+				x=0;					
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], phgrafic[mod], true);
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], phgraficwl[mod], false);
+				draw_task_parameter(mod);			
 			}
 		}
 		//printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
