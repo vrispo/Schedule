@@ -17,14 +17,14 @@
 //--------------------------------------------------------------------------
 
 #define WINDOW_H		820
-#define WINDOW_W		1100
+#define WINDOW_W		900
 
 #define GRAFIC_H		150
-#define GRAFIC_W		1000
+#define GRAFIC_W		800
 #define ORIGIN_GRAFIC_X	15
 #define SPACE			20
 #define INSTR_H			110
-#define INSTR_W			1000
+#define INSTR_W			800
 #define INSTR_L			100
 #define INSTR_X			5
 #define INSTR_Y			10
@@ -77,7 +77,7 @@ void create_mux_pcp(void);
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
-int					time_scale[3] = {100, 75, 50};
+int					time_scale[3] = {100, 70, 50};
 int					pox_ts = 0;
 
 char				phgrafic[2][4]= {"PIP","PCP"};
@@ -865,7 +865,8 @@ int				mod;
 
 			draw_resource(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
 
-			line(screen, (ORIGIN_GRAFIC_X+((x-1)*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*wl)), 4);
+			if(x>0)
+				line(screen, (ORIGIN_GRAFIC_X+((x-1)*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*wl)), 4);
 
 			run_task = 7;
 			x++;
@@ -876,7 +877,7 @@ int				mod;
 				draw_task_parameter(mod);			
 			}
 		}
-		//printf("nu=%d - task %d %d %d %d %d +++",nu,task[0],task[1],task[2],task[3],task[4]);
+		
 		nu=0;
 		for(i=0; i<5; i++)
 			task[i]=7;
