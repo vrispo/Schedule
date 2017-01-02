@@ -28,14 +28,8 @@
 #define INSTR_L			100
 #define INSTR_X			5
 #define INSTR_Y			10
-#define	UNIT			5
+#define	UNIT			10
 #define N_TASK			4
-
-//--------------------------------------------------------------------------
-//TYPE DEFINITIONS
-//--------------------------------------------------------------------------
-
-
 
 //--------------------------------------------------------------------------
 //FUNCTION DECLARATIONS
@@ -51,6 +45,7 @@ void get_keycodes(char * scan, char * ascii);
 
 void control_CPU(char *task_name, pthread_t	thread);
 
+void create_grafic_task(void);
 void create_task(void);
 void create_task_1(void);
 void create_task_2(void);
@@ -82,7 +77,7 @@ void create_mux_pcp(void);
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
 
-int					time_scale[3] = {50, 75, 100};
+int					time_scale[3] = {100, 75, 50};
 int					pox_ts = 0;
 
 char				phgrafic[2][4]= {"PIP","PCP"};
@@ -223,24 +218,24 @@ void setup_grafic(int x, int y, char s[], bool ng)
 int		i = 0;
 char	l[2];
 
-	rectfill(screen, (x-5), (y-GRAFIC_H-2), (x+GRAFIC_W), (y+5), 7);
+	rectfill(screen, (x-5), (y-GRAFIC_H-2), (x+GRAFIC_W), (y+5), 0);
 
 	//asse y
-	line(screen, x, (y-GRAFIC_H), x, y, 0);
-	line(screen, x, (y-GRAFIC_H), (x-5), (y-GRAFIC_H+5), 0);
-	line(screen, x, (y-GRAFIC_H), (x+5), (y-GRAFIC_H+5), 0);
-	textout_ex(screen, font, s, (x-5), (y-GRAFIC_H-10), 0, -1);
+	line(screen, x, (y-GRAFIC_H), x, y, 7);
+	line(screen, x, (y-GRAFIC_H), (x-5), (y-GRAFIC_H+5), 7);
+	line(screen, x, (y-GRAFIC_H), (x+5), (y-GRAFIC_H+5), 7);
+	textout_ex(screen, font, s, (x-5), (y-GRAFIC_H-10), 7, -1);
 	//asse x
-	line(screen, x, y, (x+GRAFIC_W), y, 0);
-	line(screen, (x+GRAFIC_W-5), (y-5), (x+GRAFIC_W), y, 0);
-	line(screen, (x+GRAFIC_W-5), (y+5), (x+GRAFIC_W), y, 0);
-	textout_ex(screen, font, "t", (x+GRAFIC_W+5), (y+5), 0, -1);
+	line(screen, x, y, (x+GRAFIC_W), y, 7);
+	line(screen, (x+GRAFIC_W-5), (y-5), (x+GRAFIC_W), y, 7);
+	line(screen, (x+GRAFIC_W-5), (y+5), (x+GRAFIC_W), y, 7);
+	textout_ex(screen, font, "t", (x+GRAFIC_W+5), (y+5), 7, -1);
 
 	if(ng){
 		for(i=0; i<=N_TASK; i++){
 			sprintf(l,"%i",i);
 			textout_ex(screen, font, l, (x-10), (y-(i*(H_TASK+10))),0, -1);
-			line(screen, x,(y-(i*(H_TASK+10))),(x+GRAFIC_W),(y-(i*(H_TASK+10))),0);
+			line(screen, x,(y-(i*(H_TASK+10))),(x+GRAFIC_W),(y-(i*(H_TASK+10))),7);
 		}
 	}
 }
@@ -253,34 +248,35 @@ void write_instruction(void)
 {
 char s[60];
 
-	rectfill(screen, INSTR_X, INSTR_Y, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 7);
+	rectfill(screen, INSTR_X, INSTR_Y, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 0);
 
-	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 0, -1);
-	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 0);
-	line(screen, (INSTR_X+5+INSTR_L), INSTR_Y, (INSTR_X+INSTR_W), INSTR_Y, 0);
-	line(screen, INSTR_X, INSTR_Y, INSTR_X, (INSTR_Y+INSTR_H), 0);
-	line(screen, INSTR_X, (INSTR_Y+INSTR_H), (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 0);
-	line(screen, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), (INSTR_X+INSTR_W), 10, 0);
+	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 7, -1);
+	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 7);
+	line(screen, (INSTR_X+5+INSTR_L), INSTR_Y, (INSTR_X+INSTR_W), INSTR_Y, 7);
+	line(screen, INSTR_X, INSTR_Y, INSTR_X, (INSTR_Y+INSTR_H), 7);
+	line(screen, INSTR_X, (INSTR_Y+INSTR_H), (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 7);
+	line(screen, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), (INSTR_X+INSTR_W), 10, 7);
 
-	textout_ex(screen, font, "PRESS KEY ESC TO EXIT", (INSTR_X+10), (INSTR_Y+10), 0, -1);
+	textout_ex(screen, font, "PRESS KEY ESC TO EXIT", (INSTR_X+10), (INSTR_Y+10), 7, -1);
 
 	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale[pox_ts]);
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 7, -1);
 	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 4);
-	textout_ex(screen, font,"PRESS UP ARROW TO CHANGE (50 - 75 - 100 ms)" , (INSTR_X+220), (INSTR_Y+20), 0, -1);
+	sprintf(s, "PRESS UP ARROW TO CHANGE (%i - %i - %i ms)", time_scale[0], time_scale[1], time_scale[2]);
+	textout_ex(screen, font,s , (INSTR_X+220), (INSTR_Y+20), 7, -1);
 
 	sprintf(s, "possesso risorsa a: ");
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 0, -1);
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 7, -1);
 	rectfill(screen, (INSTR_X+165), (INSTR_Y+32.5), (INSTR_X+170), (INSTR_Y+37.5), 1);
 	sprintf(s, "possesso risorsa b: ");
-	textout_ex(screen, font, s, (INSTR_X+180), (INSTR_Y+30), 0, -1);
+	textout_ex(screen, font, s, (INSTR_X+180), (INSTR_Y+30), 7, -1);
 	rectfill(screen, (INSTR_X+335), (INSTR_Y+32.5), (INSTR_X+340), (INSTR_Y+37.5), 9);
 	sprintf(s, "possesso risorsa a e b: ");
-	textout_ex(screen, font, s, (INSTR_X+350), (INSTR_Y+30), 0, -1);
+	textout_ex(screen, font, s, (INSTR_X+350), (INSTR_Y+30), 7, -1);
 	rectfill(screen, (INSTR_X+540), (INSTR_Y+32.5), (INSTR_X+545), (INSTR_Y+37.5), 13);
 
 	sprintf(s, "PRESS RIGHT ARROW TO CHANGE FROM PCP TO PIP AND VICEVERSA");
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+40), 0, -1);
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+40), 7, -1);
 }
 
 //--------------------------------------------------------------------------
@@ -297,7 +293,7 @@ FILE		*f_sched_budget;
 
 	set_color_depth(8);
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
-	clear_to_color(screen, 7);
+	clear_to_color(screen, 0);
 
 	//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 	run_task=0;
@@ -338,15 +334,7 @@ FILE		*f_sched_budget;
 	pthread_create(&grafic_tid, &workload_attr, workload_task, &workload_tp);
 	
 	//create grafic task
-	grafic_tp.arg=0;
-	grafic_tp.period=time_scale[pox_ts];
-	grafic_tp.deadline=10;
-	grafic_tp.priority=99;
-	grafic_tp.dmiss=0;
-
-	pthread_attr_init(&grafic_attr);
-	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
-	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
+	create_grafic_task();
 
 	//create generic tasks
 	create_task();
@@ -355,6 +343,19 @@ FILE		*f_sched_budget;
 //--------------------------------------------------------------------------
 //CREATE TASK
 //--------------------------------------------------------------------------
+void create_grafic_task(void)
+{
+	grafic_tp.arg=0;
+	grafic_tp.period=time_scale[pox_ts];
+	grafic_tp.deadline=8;
+	grafic_tp.priority=99;
+	grafic_tp.dmiss=0;
+	
+
+	pthread_attr_init(&grafic_attr);
+	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
+}
 
 void create_task(void)
 {
@@ -495,6 +496,7 @@ void stop_task(void)
 	pthread_cancel(t2_tid);
 	pthread_cancel(t3_tid);
 	pthread_cancel(t4_tid);
+	pthread_cancel(grafic_tid);
 
 	pthread_mutex_destroy(&mux_a_pip);
 	pthread_mutex_destroy(&mux_b_pip);
@@ -518,15 +520,7 @@ int	mod, i=0;
 	pthread_cancel(grafic_tid);
 	write_instruction();
 
-	grafic_tp.arg=0;
-	grafic_tp.period=time_scale[pox_ts];
-	grafic_tp.deadline=10;
-	grafic_tp.priority=99;
-	grafic_tp.dmiss=0;
-
-	pthread_attr_init(&grafic_attr);
-	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
-	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
+	create_grafic_task();
 	
 	if(pip)
 		mod=0;
@@ -534,15 +528,15 @@ int	mod, i=0;
 		mod=1;
 	
 	//ridisegno la parte dx del grafico
-	rectfill(screen, ORIGIN_GRAFIC_X+(x*UNIT), (ORIGIN_Y[mod]-GRAFIC_H), (ORIGIN_GRAFIC_X+((x*UNIT)+GRAFIC_W)), (ORIGIN_Y[mod]), 7);
+	rectfill(screen, ORIGIN_GRAFIC_X+(x*UNIT), (ORIGIN_Y[mod]-GRAFIC_H), (ORIGIN_GRAFIC_X+((x*UNIT)+GRAFIC_W)), (ORIGIN_Y[mod]), 0);
 	//asse x
-	line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)), ORIGIN_Y[mod], (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 0);
-	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]-5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 0);
-	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]+5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 0);
+	line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)), ORIGIN_Y[mod], (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
+	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]-5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
+	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]+5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
 	textout_ex(screen, font, "t", (ORIGIN_GRAFIC_X+GRAFIC_W+5), (ORIGIN_Y[mod]+5), 0, -1);
 
 	for(i=0; i<=N_TASK; i++){
-		line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))),(ORIGIN_Y[mod]-(i*(H_TASK+10))),0);
+		line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))),(ORIGIN_Y[mod]-(i*(H_TASK+10))),7);
 	}
 	
 	draw_task_parameter(mod);
@@ -641,6 +635,7 @@ int		mod;
 					x=0;
 					a=0;
 					b=0;
+					create_grafic_task();
 					create_task();
 				}
 				else
@@ -649,6 +644,7 @@ int		mod;
 			}
 			case KEY_RIGHT:
 			{
+				int i;
 				if(pip)
 					mod=1;
 				else
@@ -662,7 +658,10 @@ int		mod;
 				x=0;
 				a=0;
 				b=0;
+				for(i=0;i<5;i++)
+					task[i]=7;
 				pip=!pip;
+				create_grafic_task();
 				create_task();
 				break;
 			}
