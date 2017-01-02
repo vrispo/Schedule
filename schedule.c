@@ -28,7 +28,7 @@
 #define INSTR_L			100
 #define INSTR_X			5
 #define INSTR_Y			10
-
+#define	UNIT			5
 #define N_TASK			4
 
 //--------------------------------------------------------------------------
@@ -105,7 +105,6 @@ bool				pip = TRUE;
 
 int					ORIGIN_Y[2];		//#0:PIP #1:PCP
 int					ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
-
 int					H_TASK;
 
 pthread_t			grafic_tid;
@@ -267,7 +266,7 @@ char s[60];
 
 	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale[pox_ts]);
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 0, -1);
-	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 0);
+	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 4);
 	textout_ex(screen, font,"PRESS UP ARROW TO CHANGE (50 - 75 - 100 ms)" , (INSTR_X+220), (INSTR_Y+20), 0, -1);
 
 	sprintf(s, "possesso risorsa a: ");
@@ -509,6 +508,8 @@ void stop_task(void)
 
 void change_time_scale(void)
 {
+int	mod, i=0;
+	
 	pox_ts++;
 	if(pox_ts==3){
 		pox_ts = 0;
@@ -526,6 +527,25 @@ void change_time_scale(void)
 	pthread_attr_init(&grafic_attr);
 	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
+	
+	if(pip)
+		mod=0;
+	else
+		mod=1;
+	
+	//ridisegno la parte dx del grafico
+	rectfill(screen, ORIGIN_GRAFIC_X+(x*UNIT), (ORIGIN_Y[mod]-GRAFIC_H), (ORIGIN_GRAFIC_X+((x*UNIT)+GRAFIC_W)), (ORIGIN_Y[mod]), 7);
+	//asse x
+	line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)), ORIGIN_Y[mod], (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 0);
+	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]-5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 0);
+	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]+5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 0);
+	textout_ex(screen, font, "t", (ORIGIN_GRAFIC_X+GRAFIC_W+5), (ORIGIN_Y[mod]+5), 0, -1);
+
+	for(i=0; i<=N_TASK; i++){
+		line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))),(ORIGIN_Y[mod]-(i*(H_TASK+10))),0);
+	}
+	
+	draw_task_parameter(mod);
 }
 
 //--------------------------------------------------------------------------
@@ -673,12 +693,12 @@ struct timespec	at;
 	time_sub_ms(tp.dl, at, &xd);
 	time_sub_ms(tp.at, at, &nat);
 	
-	xd=((x+(xd/time_scale[pox_ts]))*5);
+	xd=((x+(xd/time_scale[pox_ts]))*UNIT);
 	
 	for(j=0; xd<GRAFIC_W; j++){
 		if(xd>=0)
 			line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),12);
-		xd=((x+((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts]))*5);
+		xd=((x+((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts]))*UNIT);
 	}
 }
 
@@ -697,11 +717,11 @@ struct timespec	at;
 	xd=0;
 	time_sub_ms(tp.at, at, &nat);
 	nat=nat-tp.period;
-	xd=((x+(nat/time_scale[pox_ts]))*5);
+	xd=(int)((x+(nat/time_scale[pox_ts]))*UNIT);
 	for(j=0; xd<GRAFIC_W; j++){
 		if(xd>=0)
 			line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),14);
-		xd=((x+((nat+(j*tp.period))/time_scale[pox_ts]))*5);
+		xd=(int)((x+((nat+(j*tp.period))/time_scale[pox_ts]))*UNIT);
 	}
 }
 
@@ -715,37 +735,50 @@ void multi_exec(int n, int gx, int gy)
 	{
 		case 1:
 		{
-			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
 			break;
 		}
 		case 2:
 		{
-			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+2), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+2), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			int x1=UNIT/2;
+			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
 			break;
 		}
 		case 3:
 		{
-			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+1), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+3), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+3), (gy-(task[2]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
+			int x1, x2;
+			x1=UNIT/3;
+			x2=((UNIT-x1)/2)+x1;
+			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+x2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x2), (gy-(task[2]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
 			break;
 		}
 		case 4:
 		{
-			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+1), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+2), (gy-(task[2]*(H_TASK+10))), (gx+(x*5)+3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+3), (gy-(task[3]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
+			int x1,x2,x3;
+			x1=UNIT/4;
+			x2=((UNIT-x1)/3)+x1;
+			x3=((UNIT-x2)/2)+x2;			
+			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+x2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x2), (gy-(task[2]*(H_TASK+10))), (gx+(x*UNIT)+x3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x3), (gy-(task[3]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
 			break;
 		}
 		case 5:
 		{
-			rectfill(screen, (gx+(x*5)), (gy-(task[0]*(H_TASK+10))), (gx+(x*5)+1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+1), (gy-(task[1]*(H_TASK+10))), (gx+(x*5)+2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+2), (gy-(task[2]*(H_TASK+10))), (gx+(x*5)+3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+3), (gy-(task[3]*(H_TASK+10))), (gx+(x*5)+4), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*5)+4), (gy-(task[4]*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/2)-(task[4]*(H_TASK+10))), 10);
+			int x1,x2,x3,x4;
+			x1=UNIT/5;
+			x2=((UNIT-x1)/4)+x1;
+			x3=((UNIT-x2)/3)+x2;
+			x4=((UNIT-x3)/2)+x3;
+			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+x2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x2), (gy-(task[2]*(H_TASK+10))), (gx+(x*UNIT)+x3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x3), (gy-(task[3]*(H_TASK+10))), (gx+(x*UNIT)+x4), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
+			rectfill(screen, (gx+(x*UNIT)+x4), (gy-(task[4]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[4]*(H_TASK+10))), 10);
 			break;
 		}
 	}
@@ -762,17 +795,17 @@ int col = 10;
 	//se entrambi dello stesso processo
 	if((a!=0)&(b==a)){
 		col = 13;
-		rectfill(screen, (gx+(x*5)), (gy-(a*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
+		rectfill(screen, (gx+(x*UNIT)), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
 	}
 	//se a di un processo
 	if((a!=0)&(b!=a)){
 		col = 1;
-		rectfill(screen, (gx+(x*5)), (gy-(a*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
+		rectfill(screen, (gx+(x*UNIT)), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
 	}
 	//se b di un processo
 	if((b!=0)&(b!=a)){
 		col = 9;
-		rectfill(screen, (gx+(x*5)), (gy-(b*(H_TASK+10))), (gx+(x*5)+5), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
+		rectfill(screen, (gx+(x*UNIT)), (gy-(b*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
 	}
 }
 
@@ -833,14 +866,14 @@ int				mod;
 
 			draw_resource(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
 
-			line(screen, (ORIGIN_GRAFIC_X+((x-1)*5)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*5)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*wl)), 4);
+			line(screen, (ORIGIN_GRAFIC_X+((x-1)*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*wl)), 4);
 
 			run_task = 7;
 			x++;
-			if((x*5)>=GRAFIC_W){
+			if((x*UNIT)>=GRAFIC_W){
 				x=0;					
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], phgrafic[mod], true);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], phgraficwl[mod], false);
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
+				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
 				draw_task_parameter(mod);			
 			}
 		}
