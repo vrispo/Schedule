@@ -16,20 +16,23 @@
 // GLOBAL CONSTANTS
 //--------------------------------------------------------------------------
 
-#define WINDOW_H		820
-#define WINDOW_W		900
+#define WINDOW_H			820
+#define WINDOW_W			900
 
-#define GRAFIC_H		150
-#define GRAFIC_W		800
-#define ORIGIN_GRAFIC_X	15
-#define SPACE			20
-#define INSTR_H			110
-#define INSTR_W			800
-#define INSTR_L			100
-#define INSTR_X			5
-#define INSTR_Y			10
-#define	UNIT			10
-#define N_TASK			4
+#define GRAFIC_H			150
+#define GRAFIC_W			800
+#define ORIGIN_GRAFIC_X		15
+#define SPACE				20
+#define INSTR_H				110
+#define INSTR_W				800
+#define INSTR_L				100
+#define INSTR_X				5
+#define INSTR_Y				10
+
+#define	UNIT				10
+#define N_TASK				4
+
+#define MAX_MS_SCALE		100
 
 //--------------------------------------------------------------------------
 //FUNCTION DECLARATIONS
@@ -55,8 +58,8 @@ void stop_task(void);
 
 void change_time_scale(void);
 
-void multi_exec(int n, int gx, int gy);
-void current_task(int tsk);
+void multi_exec(int gx, int gy);
+//void current_task(int tsk);
 
 void draw_resource(int gx, int gy);
 
@@ -73,6 +76,10 @@ void draw_activation(struct task_par tp,int i, int mod);
 void create_mux_pip(void);
 void create_mux_pcp(void);
 
+int pox_max_array(int a[], int dim);
+int freq_tsk(int a[], int s, int e);
+void analysis_time(void);
+
 //--------------------------------------------------------------------------
 //GLOBAL VARIABLES
 //--------------------------------------------------------------------------
@@ -84,8 +91,9 @@ char				phgrafic[2][4]= {"PIP","PCP"};
 char				phgraficwl[2][13]= {"PIP workload","PCP workload"};
 
 int					x = 0;
-int					task[5];
+int					task[UNIT];
 int					nu = 0;
+int					r_task[MAX_MS_SCALE];
 
 bool				use = false;
 int					free_ms = 0;		//number of ms that the CPU is free
@@ -135,7 +143,11 @@ struct sched_param	workload_par;
 int					max_prio_a = 90;
 int					max_prio_b = 70;
 int					a = 0;
+int					xas=-1;				//x start a busy
+int					xae=-1;				//x end a busy
 int					b = 0;
+int					xbs = 0;			//x start b busy
+int					xbe = 0;			//x end b busy
 
 pthread_mutex_t		mux_a_pip;
 pthread_mutex_t 	mux_b_pip;
@@ -155,8 +167,7 @@ pthread_mutexattr_t	mattr_pcp;
 
 int main(int argc, char * argv[])
 {
-struct		timespec t;
-int 		delta = 500;
+struct		timespec t, at;
 cpu_set_t	cpuset;
 pthread_t	thread;
 
@@ -166,20 +177,26 @@ pthread_t	thread;
 	if (pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
 		perror("pthread_setaffinity_np");
 
-	t.tv_sec = 0;
-	t.tv_nsec = delta*1000000;
 	setup();
 
 	while(run)
 	{
 		use = true;
 		run_task=0;
-		task[nu]=0;
-		nu++;
 		analysis_key();
-
+		
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 50);
+		
 		control_CPU("MAIN",thread);
-		clock_nanosleep(CLOCK_MONOTONIC, 0, &t, NULL);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+			use = true;
+			run_task=0;
+		}while(time_cmp(at, t)<=0);
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t,400);		
+		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 	}
 
 	allegro_exit();
@@ -607,7 +624,7 @@ void analysis_key(void)
 {
 char	scan, ascii;
 bool	keyp=FALSE;
-int		mod;
+int		mod, i;
 
 	keyp=keypressed();
 	if(keyp){
@@ -635,6 +652,11 @@ int		mod;
 					x=0;
 					a=0;
 					b=0;
+					nu=0;
+					for(i=0;i<UNIT;i++)
+						task[i]=7;
+					for(i=0;i<MAX_MS_SCALE;i++)
+						r_task[i]=7;
 					create_grafic_task();
 					create_task();
 				}
@@ -648,8 +670,9 @@ int		mod;
 				if(pip)
 					mod=1;
 				else
-					mod=0;				
-				stop_task();
+					mod=0;
+				if(!stop)
+					stop_task();
 				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
 				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
 				pwl = 0;
@@ -658,8 +681,11 @@ int		mod;
 				x=0;
 				a=0;
 				b=0;
-				for(i=0;i<5;i++)
+				nu=0;
+				for(i=0;i<UNIT;i++)
 					task[i]=7;
+				for(i=0;i<MAX_MS_SCALE;i++)
+					r_task[i]=7;				
 				pip=!pip;
 				create_grafic_task();
 				create_task();
@@ -728,59 +754,15 @@ struct timespec	at;
 //HANDLING MULTI EXEC TASK
 //--------------------------------------------------------------------------
 
-void multi_exec(int n, int gx, int gy)
+void multi_exec(int gx, int gy)
 {
-	switch(n)
-	{
-		case 1:
-		{
-			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			break;
-		}
-		case 2:
-		{
-			int x1=UNIT/2;
-			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			break;
-		}
-		case 3:
-		{
-			int x1, x2;
-			x1=UNIT/3;
-			x2=((UNIT-x1)/2)+x1;
-			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+x2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x2), (gy-(task[2]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
-			break;
-		}
-		case 4:
-		{
-			int x1,x2,x3;
-			x1=UNIT/4;
-			x2=((UNIT-x1)/3)+x1;
-			x3=((UNIT-x2)/2)+x2;			
-			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+x2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x2), (gy-(task[2]*(H_TASK+10))), (gx+(x*UNIT)+x3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x3), (gy-(task[3]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
-			break;
-		}
-		case 5:
-		{
-			int x1,x2,x3,x4;
-			x1=UNIT/5;
-			x2=((UNIT-x1)/4)+x1;
-			x3=((UNIT-x2)/3)+x2;
-			x4=((UNIT-x3)/2)+x3;
-			rectfill(screen, (gx+(x*UNIT)), (gy-(task[0]*(H_TASK+10))), (gx+(x*UNIT)+x1), (gy-(H_TASK/2)-(task[0]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x1), (gy-(task[1]*(H_TASK+10))), (gx+(x*UNIT)+x2), (gy-(H_TASK/2)-(task[1]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x2), (gy-(task[2]*(H_TASK+10))), (gx+(x*UNIT)+x3), (gy-(H_TASK/2)-(task[2]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x3), (gy-(task[3]*(H_TASK+10))), (gx+(x*UNIT)+x4), (gy-(H_TASK/2)-(task[3]*(H_TASK+10))), 10);
-			rectfill(screen, (gx+(x*UNIT)+x4), (gy-(task[4]*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/2)-(task[4]*(H_TASK+10))), 10);
-			break;
-		}
-	}
+int	i;	
+	
+	analysis_time();
+	
+	for(i=0; i<UNIT; i++)
+		if(task[i]!=7)
+			line(screen, (gx+(x*UNIT)+i), (gy-(task[i]*(H_TASK+10))),(gx+(x*UNIT)+i), (gy-(H_TASK/2)-(task[i]*(H_TASK+10))), 10);
 }
 
 //--------------------------------------------------------------------------
@@ -794,43 +776,23 @@ int col = 10;
 	//se entrambi dello stesso processo
 	if((a!=0)&(b==a)){
 		col = 13;
-		rectfill(screen, (gx+(x*UNIT)), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
+		rectfill(screen, (gx+(x*UNIT)+xas), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT+xae), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
 	}
 	//se a di un processo
 	if((a!=0)&(b!=a)){
 		col = 1;
-		rectfill(screen, (gx+(x*UNIT)), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
+		rectfill(screen, (gx+(x*UNIT)+xas), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT+xbe), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
 	}
 	//se b di un processo
 	if((b!=0)&(b!=a)){
 		col = 9;
-		rectfill(screen, (gx+(x*UNIT)), (gy-(b*(H_TASK+10))), (gx+(x*UNIT)+UNIT), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
+		rectfill(screen, (gx+(x*UNIT)+xbs), (gy-(b*(H_TASK+10))), (gx+(x*UNIT)+UNIT+xbe), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
 	}
-}
-
-//--------------------------------------------------------------------------
-//CURRENT TASK
-//--------------------------------------------------------------------------
-
-void current_task(int tsk)
-{
-bool	task_r = false;
-int		i;
-
-	use=true;
-	run_task=tsk;
-	for(i= 0; i < nu; i++)
-	{
-		if(task[i]==tsk)
-		{
-			task_r = true;
-		}
-	}
-	if(task_r == false)
-	{
-		task[nu] = tsk;
-		nu++;
-	}
+	
+	xas = 0;
+	xae = 0;
+	xbs = 0;
+	xbe = 0;
 }
 
 //--------------------------------------------------------------------------
@@ -861,7 +823,7 @@ int				mod;
 			clock_gettime(CLOCK_MONOTONIC, &at);
 
 			if(run_task!=7)
-				multi_exec(nu, ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
+				multi_exec(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
 
 			draw_resource(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
 
@@ -878,9 +840,12 @@ int				mod;
 			}
 		}
 		
+		for(i=0; i<MAX_MS_SCALE; i++)
+			r_task[i] = 7;
 		nu=0;
-		for(i=0; i<5; i++)
-			task[i]=7;
+		for(i=0; i<UNIT; i++)
+			task[i] = 7;
+		
 		wait_for_period(&grafic_tp);
 	}
 }
@@ -910,71 +875,87 @@ int					mod;
 	while(1){
 		use = true;
 		run_task=1;
-		task[nu]=1;
-		nu++;
 		control_CPU("TASK 1",pthread_self());
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
+			xas=nu/UNIT;
+			
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 1;
-				current_task(1);
+				use=true;
+				run_task=1;
 			}while(time_cmp(at, t)<=0);
 
 			pthread_mutex_lock(&mux_b_pip);
+			xbs=nu/UNIT;
+			
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 400);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 1;
-				current_task(1);
+				use=true;
+				run_task=1;
 			}while(time_cmp(at, t)<=0);
 
-			b=0;
+			b=0;			
+			xbe=nu/UNIT;
 			pthread_mutex_unlock(&mux_b_pip);
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
-				current_task(1);
+				use=true;
+				run_task=1;
 			}while(time_cmp(at, t)<=0);
 
 			a = 0;
+			xae=nu/UNIT;
 			pthread_mutex_unlock(&mux_a_pip);
 		}
 		else{
 			pthread_mutex_lock(&mux_a_pcp);
+			xas=nu/UNIT;
+			
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 1;
-				current_task(1);
+				use=true;
+				run_task=1;
 			}while(time_cmp(at, t)<=0);
 
 			pthread_mutex_lock(&mux_b_pcp);
+			xbs=nu/UNIT;
+			
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 400);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 1;
-				current_task(1);
+				use=true;
+				run_task=1;
 			}while(time_cmp(at, t)<=0);
 
 			b=0;
+			xbe=nu/UNIT;
 			pthread_mutex_unlock(&mux_b_pcp);
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 100);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
-				current_task(1);
+				use=true;
+				run_task=1;
 			}while(time_cmp(at, t)<=0);
 
 			a = 0;
+			xae=nu/UNIT;
 			pthread_mutex_unlock(&mux_a_pcp);
 		}
 		wait_for_period(tp);
@@ -1006,35 +987,39 @@ int					mod;
 	while(1){
 		use = true;
 		run_task=2;
-		task[nu]=2;
-		nu++;
 		control_CPU("TASK 2",pthread_self());
 		if(pip){
 			pthread_mutex_lock(&mux_b_pip);
+			xbs=nu/UNIT;
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 300);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 2;
-				current_task(2);
+				use=true;
+				run_task=2;
 			}while(time_cmp(at, t)<=0);
+			
+			xbe=nu/UNIT;
 			b = 0;
-
 			pthread_mutex_unlock(&mux_b_pip);
 		}
 		else{
 			pthread_mutex_lock(&mux_b_pcp);
+			xbs=nu/UNIT;
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 300);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				b = 2;
-				current_task(2);
+				use=true;
+				run_task=2;
 			}while(time_cmp(at, t)<=0);
+			
+			xbe=nu/UNIT;
 			b = 0;
-
 			pthread_mutex_unlock(&mux_b_pcp);
 		}
 		wait_for_period(tp);
@@ -1066,14 +1051,13 @@ int					mod;
 	while(1){
 		use = true;
 		run_task=3;
-		task[nu]=3;
-		nu++;
 
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 300);
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
-			current_task(3);
+			use=true;
+			run_task=3;
 		}while(time_cmp(at, t)<=0);
 
 		control_CPU("TASK 3",pthread_self());
@@ -1106,21 +1090,23 @@ int					mod;
 	while(1){
 		use = true;
 		run_task=4;
-		task[nu]=4;
 		control_CPU("TASK 4",pthread_self());
-		nu++;
+
 		if(pip){
 			pthread_mutex_lock(&mux_a_pip);
+			xas=nu/UNIT;
 
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 300);
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 4;
-				current_task(4);
+				use=true;
+				run_task=4;				
 			}while(time_cmp(at, t)<=0);
+			
+			xae=nu/UNIT;
 			a = 0;
-
 			pthread_mutex_unlock(&mux_a_pip);
 		}
 		else{
@@ -1131,10 +1117,12 @@ int					mod;
 			do{
 				clock_gettime(CLOCK_MONOTONIC, &at);
 				a = 4;
-				current_task(4);
+				use=true;
+				run_task=4;				
 			}while(time_cmp(at, t)<=0);
+			
+			xae=nu/UNIT;
 			a = 0;
-
 			pthread_mutex_unlock(&mux_a_pcp);
 		}
 		wait_for_period(tp);
@@ -1156,10 +1144,63 @@ int		cpu;
 		while(1){
 			if((!use)&(free_ms<time_scale[pox_ts]))
 				free_ms++;
+			
+			if((use==false)&(nu<time_scale[pox_ts]))
+				r_task[nu]=7;
+			if((use==true)&(nu<time_scale[pox_ts]))
+				r_task[nu]=run_task;
+			
 			use = false;
+			nu++;
+			
 			cpu = sched_getcpu();
 			if(cpu!=0)
 				printf("ERRORE CPU ");
 			wait_for_period(tp);
 		}
+}
+
+//--------------------------------------------------------------------------
+//TIME ANALYSIS
+//--------------------------------------------------------------------------
+
+int pox_max_array(int a[], int dim)
+{
+int	pox,max,i;
+
+	pox=0;
+	max=a[pox];
+	
+	for(i=0; i<dim; i++)
+		if(max<a[i])
+		{
+			max = a[i];
+			pox = i;
+		}
+	
+	return pox;
+}
+
+int freq_tsk(int a[], int s, int e)
+{
+int pox, i;
+int k[8];
+	
+	for(i=0; i<8; i++)
+		k[i]=0;
+	for(i=s; i<e; i++)
+		k[a[i]]++;
+	
+	pox=pox_max_array(k,8);
+	return pox;
+}
+
+void analysis_time(void)
+{
+int n, i;
+	
+	n=time_scale[pox_ts]/UNIT;
+	
+	for(i=0; i<UNIT; i++)
+		task[i]=freq_tsk(r_task, (n*i), ((n*i)+n));
 }
