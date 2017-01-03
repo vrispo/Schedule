@@ -312,7 +312,6 @@ FILE		*f_sched_budget;
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
 	clear_to_color(screen, 0);
 
-	//clock_gettime(CLOCK_MONOTONIC, &zero_time);
 	run_task=0;
 
 	CPU_ZERO(&cpuset);
@@ -876,88 +875,64 @@ int					mod;
 		use = true;
 		run_task=1;
 		control_CPU("TASK 1",pthread_self());
-		if(pip){
+		
+		if(pip)
 			pthread_mutex_lock(&mux_a_pip);
-			xas=nu/UNIT;
-			
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 100);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				a = 1;
-				use=true;
-				run_task=1;
-			}while(time_cmp(at, t)<=0);
-
-			pthread_mutex_lock(&mux_b_pip);
-			xbs=nu/UNIT;
-			
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 400);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				b = 1;
-				use=true;
-				run_task=1;
-			}while(time_cmp(at, t)<=0);
-
-			b=0;			
-			xbe=nu/UNIT;
-			pthread_mutex_unlock(&mux_b_pip);
-
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 100);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				use=true;
-				run_task=1;
-			}while(time_cmp(at, t)<=0);
-
-			a = 0;
-			xae=nu/UNIT;
-			pthread_mutex_unlock(&mux_a_pip);
-		}
-		else{
+		else
 			pthread_mutex_lock(&mux_a_pcp);
-			xas=nu/UNIT;
 			
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 100);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				a = 1;
-				use=true;
-				run_task=1;
-			}while(time_cmp(at, t)<=0);
+		xas = nu/UNIT;
+		a = 1;
+		
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 100);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+			a = 1;
+			use=true;
+			run_task=1;
+		}while(time_cmp(at, t)<=0);
 
+		if(pip)	
+			pthread_mutex_lock(&mux_b_pip);
+		else
 			pthread_mutex_lock(&mux_b_pcp);
-			xbs=nu/UNIT;
 			
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 400);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				b = 1;
-				use=true;
-				run_task=1;
-			}while(time_cmp(at, t)<=0);
+		xbs = nu/UNIT;
+		b = 1;
+			
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 400);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+			b = 1;
+			use=true;
+			run_task=1;
+		}while(time_cmp(at, t)<=0);
 
-			b=0;
-			xbe=nu/UNIT;
+		b=0;			
+		xbe=nu/UNIT;
+		
+		if(pip)
+			pthread_mutex_unlock(&mux_b_pip);
+		else
 			pthread_mutex_unlock(&mux_b_pcp);
 
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 100);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				use=true;
-				run_task=1;
-			}while(time_cmp(at, t)<=0);
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 100);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+			use=true;
+			run_task=1;
+		}while(time_cmp(at, t)<=0);
 
-			a = 0;
-			xae=nu/UNIT;
+		a = 0;
+		xae=nu/UNIT;
+		if(pip)
+			pthread_mutex_unlock(&mux_a_pip);
+		else
 			pthread_mutex_unlock(&mux_a_pcp);
-		}
+		
 		wait_for_period(tp);
 	}
 }
@@ -987,41 +962,33 @@ int					mod;
 	while(1){
 		use = true;
 		run_task=2;
+		
 		control_CPU("TASK 2",pthread_self());
-		if(pip){
+		
+		if(pip)
 			pthread_mutex_lock(&mux_b_pip);
-			xbs=nu/UNIT;
-
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				b = 2;
-				use=true;
-				run_task=2;
-			}while(time_cmp(at, t)<=0);
-			
-			xbe=nu/UNIT;
-			b = 0;
-			pthread_mutex_unlock(&mux_b_pip);
-		}
-		else{
+		else
 			pthread_mutex_lock(&mux_b_pcp);
-			xbs=nu/UNIT;
+		
+		xbs=nu/UNIT;
 
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				b = 2;
-				use=true;
-				run_task=2;
-			}while(time_cmp(at, t)<=0);
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 300);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+			b = 2;
+			use=true;
+			run_task=2;
+		}while(time_cmp(at, t)<=0);
 			
-			xbe=nu/UNIT;
-			b = 0;
+		xbe=nu/UNIT;
+		b = 0;
+		
+		if(pip)
+			pthread_mutex_unlock(&mux_b_pip);
+		else
 			pthread_mutex_unlock(&mux_b_pcp);
-		}
+
 		wait_for_period(tp);
 	}
 }
@@ -1092,39 +1059,30 @@ int					mod;
 		run_task=4;
 		control_CPU("TASK 4",pthread_self());
 
-		if(pip){
+		if(pip)
 			pthread_mutex_lock(&mux_a_pip);
-			xas=nu/UNIT;
-
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				a = 4;
-				use=true;
-				run_task=4;				
-			}while(time_cmp(at, t)<=0);
-			
-			xae=nu/UNIT;
-			a = 0;
-			pthread_mutex_unlock(&mux_a_pip);
-		}
-		else{
+		else
 			pthread_mutex_lock(&mux_a_pcp);
-
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, 300);
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				a = 4;
-				use=true;
-				run_task=4;				
-			}while(time_cmp(at, t)<=0);
 			
-			xae=nu/UNIT;
-			a = 0;
+		xas=nu/UNIT;
+
+		clock_gettime(CLOCK_MONOTONIC, &t);
+		time_add_ms(&t, 300);
+		do{
+			clock_gettime(CLOCK_MONOTONIC, &at);
+			a = 4;
+			use=true;
+			run_task=4;				
+		}while(time_cmp(at, t)<=0);
+		
+		xae=nu/UNIT;
+		a = 0;
+			
+		if(pip)
+			pthread_mutex_unlock(&mux_a_pip);
+		else
 			pthread_mutex_unlock(&mux_a_pcp);
-		}
+
 		wait_for_period(tp);
 	}
 }
