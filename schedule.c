@@ -77,7 +77,7 @@ void create_mux_pip(void);
 void create_mux_pcp(void);
 
 int pox_max_array(int a[], int dim);
-int freq_tsk(int a[], int s, int e);
+int freq_tsk(int a[], int s, int e, int n);
 void analysis_time(void);
 
 //--------------------------------------------------------------------------
@@ -103,6 +103,7 @@ double				pwl = 0;			//previous workload
 bool				run = TRUE;
 int					run_task;
 int					stop=0;
+int					free_r=0;
 
 bool				pip = TRUE;
 
@@ -143,11 +144,9 @@ struct sched_param	workload_par;
 int					max_prio_a = 90;
 int					max_prio_b = 70;
 int					a = 0;
-int					xas=-1;				//x start a busy
-int					xae=-1;				//x end a busy
+int					a_occupation[MAX_MS_SCALE];
 int					b = 0;
-int					xbs = 0;			//x start b busy
-int					xbe = 0;			//x end b busy
+int					b_occupation[MAX_MS_SCALE];
 
 pthread_mutex_t		mux_a_pip;
 pthread_mutex_t 	mux_b_pip;
@@ -508,16 +507,32 @@ cpu_set_t	cpuset;
 void stop_task(void)
 {
 	stop=1;
-	pthread_cancel(t1_tid);
-	pthread_cancel(t2_tid);
-	pthread_cancel(t3_tid);
-	pthread_cancel(t4_tid);
-	pthread_cancel(grafic_tid);
+	
+	do{
+		
+	}while(free_r<3);
 
-	pthread_mutex_destroy(&mux_a_pip);
-	pthread_mutex_destroy(&mux_b_pip);
-	pthread_mutex_destroy(&mux_a_pcp);
-	pthread_mutex_destroy(&mux_b_pcp);
+	if(pip)
+	{
+		if(pthread_mutex_destroy(&mux_a_pip)!=0)
+			perror("Error in destroy mutex a pip");
+		if(pthread_mutex_destroy(&mux_b_pip)!=0)
+			perror("Error in destroy mutex b pip");
+	}
+	else
+	{
+		pthread_mutex_destroy(&mux_a_pcp);
+		pthread_mutex_destroy(&mux_b_pcp);		
+/*		if(pthread_mutex_destroy(&mux_a_pcp)!=0)
+			perror("Error in destroy mutex a pcp");
+		if(pthread_mutex_destroy(&mux_b_pcp)!=0)
+			perror("Error in destroy mutex b pcp");*/
+	}
+	
+	pthread_cancel(t3_tid);
+	pthread_cancel(grafic_tid);	
+	
+	free_r=0;
 }
 
 //--------------------------------------------------------------------------
@@ -566,8 +581,10 @@ void create_mux_pip(void)
 {
 	pthread_mutexattr_init(&mattr_pip);
 	pthread_mutexattr_setprotocol(&mattr_pip, PTHREAD_PRIO_INHERIT);
-	pthread_mutex_init(&mux_a_pip, &mattr_pip);
-	pthread_mutex_init(&mux_b_pip, &mattr_pip);
+	if(pthread_mutex_init(&mux_a_pip, &mattr_pip)!=0)
+		perror("Error in create mux a pip");
+	if(pthread_mutex_init(&mux_b_pip, &mattr_pip)!=0)
+		perror("Error in create mux b pip");
 	pthread_mutexattr_destroy(&mattr_pip);
 }
 
@@ -580,9 +597,11 @@ void create_mux_pcp(void)
 	pthread_mutexattr_init(&mattr_pcp);
 	pthread_mutexattr_setprotocol(&mattr_pcp, PTHREAD_PRIO_PROTECT);
 	pthread_mutexattr_setprioceiling(&mattr_pcp, max_prio_a);
-	pthread_mutex_init(&mux_a_pcp, &mattr_pcp);
+	if(pthread_mutex_init(&mux_a_pcp, &mattr_pcp)!=0)
+		perror("Error in create mux a pcp");
 	pthread_mutexattr_setprioceiling(&mattr_pcp, max_prio_b);
-	pthread_mutex_init(&mux_b_pcp, &mattr_pcp);
+	if(pthread_mutex_init(&mux_b_pcp, &mattr_pcp)!=0)
+		perror("Error in create mux b pcp");
 	pthread_mutexattr_destroy(&mattr_pip);
 }
 
@@ -656,6 +675,10 @@ int		mod, i;
 						task[i]=7;
 					for(i=0;i<MAX_MS_SCALE;i++)
 						r_task[i]=7;
+					for(i=0; i<MAX_MS_SCALE; i++){
+						a_occupation[i] = 0;
+						b_occupation[i] = 0;
+					}
 					create_grafic_task();
 					create_task();
 				}
@@ -684,7 +707,11 @@ int		mod, i;
 				for(i=0;i<UNIT;i++)
 					task[i]=7;
 				for(i=0;i<MAX_MS_SCALE;i++)
-					r_task[i]=7;				
+					r_task[i]=7;
+				for(i=0; i<MAX_MS_SCALE; i++){
+					a_occupation[i] = 0;
+					b_occupation[i] = 0;
+				}
 				pip=!pip;
 				create_grafic_task();
 				create_task();
@@ -771,27 +798,33 @@ int	i;
 void draw_resource(int gx, int gy)
 {
 int col = 10;
+int i, n, ax, bx;
 
-	//se entrambi dello stesso processo
-	if((a!=0)&(b==a)){
-		col = 13;
-		rectfill(screen, (gx+(x*UNIT)+xas), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT+xae), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
-	}
-	//se a di un processo
-	if((a!=0)&(b!=a)){
-		col = 1;
-		rectfill(screen, (gx+(x*UNIT)+xas), (gy-(a*(H_TASK+10))), (gx+(x*UNIT)+UNIT+xbe), (gy-(H_TASK/4)-(a*(H_TASK+10))), col);
-	}
-	//se b di un processo
-	if((b!=0)&(b!=a)){
-		col = 9;
-		rectfill(screen, (gx+(x*UNIT)+xbs), (gy-(b*(H_TASK+10))), (gx+(x*UNIT)+UNIT+xbe), (gy-(H_TASK/4)-(b*(H_TASK+10))), col);
-	}
+	n=time_scale[pox_ts]/UNIT;
 	
-	xas = 0;
-	xae = 0;
-	xbs = 0;
-	xbe = 0;
+	for(i=0; i<UNIT; i++)
+	{
+		ax=freq_tsk(a_occupation, (n*i), ((n*i)+n), 6);
+		bx=freq_tsk(b_occupation, (n*i), ((n*i)+n), 6);
+		
+		if((ax!=0)&(bx==ax))
+		{
+			col = 13;
+			line(screen, (gx+(x*UNIT)+i), (gy-(ax*(H_TASK+10))), (gx+(x*UNIT)+i), (gy-(H_TASK/4)-(ax*(H_TASK+10))), col);
+		}
+		
+		if((ax!=0)&(bx!=a))
+		{
+			col = 1;
+			line(screen, (gx+(x*UNIT)+i), (gy-(ax*(H_TASK+10))), (gx+(x*UNIT)+i), (gy-(H_TASK/4)-(ax*(H_TASK+10))), col);
+		}
+		
+		if((bx!=0)&(bx!=ax))
+		{
+			col = 9;
+			line(screen, (gx+(x*UNIT)+i), (gy-(bx*(H_TASK+10))), (gx+(x*UNIT)+i), (gy-(H_TASK/4)-(bx*(H_TASK+10))), col);
+		}		
+	}
 }
 
 //--------------------------------------------------------------------------
@@ -841,6 +874,10 @@ int				mod;
 		
 		for(i=0; i<MAX_MS_SCALE; i++)
 			r_task[i] = 7;
+		for(i=0; i<MAX_MS_SCALE; i++){
+			a_occupation[i] = 0;
+			b_occupation[i] = 0;
+		}		
 		nu=0;
 		for(i=0; i<UNIT; i++)
 			task[i] = 7;
@@ -880,12 +917,28 @@ int					mod;
 			pthread_mutex_lock(&mux_a_pip);
 		else
 			pthread_mutex_lock(&mux_a_pcp);
-			
-		xas = nu/UNIT;
+
 		a = 1;
 		
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 100);
+		
+		if(stop==1)
+		{
+			if(pip)
+			{
+				if(pthread_mutex_unlock(&mux_a_pip)!=0)
+					perror("Error unlock a pip task 1");
+			}
+			else
+			{
+				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
+					perror("Error unlock a pcp task 1");
+			}
+			free_r++;
+			pthread_exit(0);
+		}
+		
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			a = 1;
@@ -897,12 +950,28 @@ int					mod;
 			pthread_mutex_lock(&mux_b_pip);
 		else
 			pthread_mutex_lock(&mux_b_pcp);
-			
-		xbs = nu/UNIT;
+
 		b = 1;
 			
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 400);
+		
+		if(stop==1)
+		{
+			if(pip)
+			{
+				if(pthread_mutex_unlock(&mux_a_pip)!=0)
+					perror("Error unlock a pip task 1");
+			}
+			else
+			{
+				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
+					perror("Error unlock a pcp task 1");
+			}
+			free_r++;
+			pthread_exit(0);
+		}
+		
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			b = 1;
@@ -910,8 +979,7 @@ int					mod;
 			run_task=1;
 		}while(time_cmp(at, t)<=0);
 
-		b=0;			
-		xbe=nu/UNIT;
+		b=0;
 		
 		if(pip)
 			pthread_mutex_unlock(&mux_b_pip);
@@ -919,6 +987,23 @@ int					mod;
 			pthread_mutex_unlock(&mux_b_pcp);
 
 		clock_gettime(CLOCK_MONOTONIC, &t);
+		
+		if(stop==1)
+		{
+			if(pip)
+			{
+				if(pthread_mutex_unlock(&mux_a_pip)!=0)
+					perror("Error unlock a pip task 1");
+			}
+			else
+			{
+				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
+					perror("Error unlock a pcp task 1");
+			}
+			free_r++;
+			pthread_exit(0);
+		}		
+		
 		time_add_ms(&t, 100);
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
@@ -927,12 +1012,17 @@ int					mod;
 		}while(time_cmp(at, t)<=0);
 
 		a = 0;
-		xae=nu/UNIT;
+
 		if(pip)
 			pthread_mutex_unlock(&mux_a_pip);
 		else
 			pthread_mutex_unlock(&mux_a_pcp);
 		
+		if(stop==1)
+		{
+			free_r++;
+			pthread_exit(0);			
+		}
 		wait_for_period(tp);
 	}
 }
@@ -969,26 +1059,45 @@ int					mod;
 			pthread_mutex_lock(&mux_b_pip);
 		else
 			pthread_mutex_lock(&mux_b_pcp);
-		
-		xbs=nu/UNIT;
 
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 300);
+		
+		if(stop==1)
+		{
+			if(pip)
+			{
+				if(pthread_mutex_unlock(&mux_b_pip)!=0)
+					perror("Error in unlock mux b pip task 2");
+			}
+			else
+			{	
+				if(pthread_mutex_unlock(&mux_b_pcp)!=0)
+					perror("Error in unlock mux b pcp task 2");
+			}
+			free_r++;
+			pthread_exit(0);
+		}
+		
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			b = 2;
 			use=true;
 			run_task=2;
 		}while(time_cmp(at, t)<=0);
-			
-		xbe=nu/UNIT;
+
 		b = 0;
 		
 		if(pip)
 			pthread_mutex_unlock(&mux_b_pip);
 		else
 			pthread_mutex_unlock(&mux_b_pcp);
-
+		
+		if(stop==1)
+		{
+			free_r++;
+			pthread_exit(0);			
+		}
 		wait_for_period(tp);
 	}
 }
@@ -1063,19 +1172,33 @@ int					mod;
 			pthread_mutex_lock(&mux_a_pip);
 		else
 			pthread_mutex_lock(&mux_a_pcp);
-			
-		xas=nu/UNIT;
 
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 300);
+		
+		if(stop==1)
+		{
+			if(pip)
+			{	
+				if(pthread_mutex_unlock(&mux_a_pip)!=0)
+					perror("Error unlock mux a pip");
+			}
+			else
+			{
+				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
+					perror("Error unlock mux a pcp");
+			}
+			free_r++;
+			pthread_exit(0);
+		}
+		
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			a = 4;
 			use=true;
 			run_task=4;				
 		}while(time_cmp(at, t)<=0);
-		
-		xae=nu/UNIT;
+
 		a = 0;
 			
 		if(pip)
@@ -1083,6 +1206,11 @@ int					mod;
 		else
 			pthread_mutex_unlock(&mux_a_pcp);
 
+		if(stop==1)
+		{
+			free_r++;
+			pthread_exit(0);
+		}
 		wait_for_period(tp);
 	}
 }
@@ -1107,6 +1235,12 @@ int		cpu;
 				r_task[nu]=7;
 			if((use==true)&(nu<time_scale[pox_ts]))
 				r_task[nu]=run_task;
+			
+			if(nu<time_scale[pox_ts])
+			{
+				a_occupation[nu] = a;
+				b_occupation[nu] = b;
+			}
 			
 			use = false;
 			nu++;
@@ -1139,17 +1273,17 @@ int	pox,max,i;
 	return pox;
 }
 
-int freq_tsk(int a[], int s, int e)
+int freq_tsk(int a[], int s, int e, int n)
 {
 int pox, i;
-int k[8];
+int k[n];
 	
-	for(i=0; i<8; i++)
+	for(i=0; i<n; i++)
 		k[i]=0;
 	for(i=s; i<e; i++)
 		k[a[i]]++;
 	
-	pox=pox_max_array(k,8);
+	pox=pox_max_array(k,n);
 	return pox;
 }
 
@@ -1160,5 +1294,5 @@ int n, i;
 	n=time_scale[pox_ts]/UNIT;
 	
 	for(i=0; i<UNIT; i++)
-		task[i]=freq_tsk(r_task, (n*i), ((n*i)+n));
+		task[i]=freq_tsk(r_task, (n*i), ((n*i)+n), 8);
 }
