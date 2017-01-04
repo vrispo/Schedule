@@ -9,7 +9,7 @@ CC = gcc
 #---------------------------------------------------
 # CC options
 #---------------------------------------------------
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -ggdb
 CLIBS = -lpthread -lrt -lm -lalleg
 #---------------------------------------------------
 # Additional programs
