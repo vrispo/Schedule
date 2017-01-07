@@ -3,6 +3,7 @@
 #include <features.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <sched.h>
 #include <unistd.h>
@@ -48,6 +49,8 @@ void get_keycodes(char * scan, char * ascii);
 
 void control_CPU(char *task_name, pthread_t	thread);
 
+void set_parameter(void);
+
 void create_grafic_task(void);
 void create_task(void);
 void create_task_1(void);
@@ -64,10 +67,7 @@ void multi_exec(int gx, int gy);
 void draw_resource(int gx, int gy);
 
 void * grafic_task(void * arg);
-void * t_task_1(void * arg);
-void * t_task_2(void * arg);
-void * t_task_3(void * arg);
-void * t_task_4(void * arg);
+void * t_task(void * arg);
 void * workload_task(void * arg);
 
 void draw_deadline(struct task_par tp, int i, int mod);
@@ -110,6 +110,14 @@ bool				pip = TRUE;
 int					ORIGIN_Y[2];		//#0:PIP #1:PCP
 int					ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
 int					H_TASK;
+
+int					period[N_TASK];
+int					deadline[N_TASK];
+int					priority[N_TASK];
+int					comp_time[N_TASK];
+int					sect_a_time[N_TASK];
+int					sect_b_time[N_TASK];
+bool				nested[N_TASK];
 
 pthread_t			grafic_tid;
 struct task_par		grafic_tp;
@@ -176,6 +184,7 @@ pthread_t	thread;
 	if (pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
 		perror("pthread_setaffinity_np");
 
+	set_parameter();
 	setup();
 
 	while(run)
@@ -299,6 +308,53 @@ char s[60];
 //SETUP
 //--------------------------------------------------------------------------
 
+void set_parameter(void)
+{
+FILE	*ts;
+char	riga[100];
+char	*tok;
+int		n, i = 0;
+
+printf("sono in set parameter\n");
+	ts=fopen("taskset.txt", "r");
+	if(ts==NULL)
+		perror("Error in file open");
+	
+	fgets(riga,99,ts);
+
+	do
+	{
+		if(i>=N_TASK)
+		{
+			printf("Error:too much row");
+			exit(0);
+		}
+			
+		tok=strtok(riga, " ");
+		period[i]=atoi(tok);
+		tok=strtok(NULL, " ");
+		deadline[i]=atoi(tok);
+		tok=strtok(NULL, " ");
+		priority[i]=atoi(tok);
+		tok=strtok(NULL, " ");
+		comp_time[i]=atoi(tok);
+		tok=strtok(NULL, " ");
+		sect_a_time[i]=atoi(tok);
+		tok=strtok(NULL, " ");
+		sect_b_time[i]=atoi(tok);
+		tok=strtok(NULL, " ");
+		n=atoi(tok);
+		if(n==1)
+			nested[i]=true;
+		else
+			nested[i]=false;
+		i++;
+	}while(fgets(riga,99,ts)!=NULL);
+	for(i=0;i<N_TASK;i++)
+		printf("%i %i %i %i %i %i \n", period[i],deadline[i],priority[i],comp_time[i], sect_a_time[i], sect_b_time[i]);
+	fclose(ts);
+}
+
 void setup(void)
 {
 cpu_set_t	cpuset;
@@ -420,10 +476,10 @@ cpu_set_t	cpuset;
 	CPU_SET(0, &cpuset);
 
 	//create task 1
-	t1_tp.arg=0;
-	t1_tp.period=1200;
-	t1_tp.deadline=1000;
-	t1_tp.priority=60;
+	t1_tp.arg=1;
+	t1_tp.period=period[0];
+	t1_tp.deadline=deadline[0];
+	t1_tp.priority=priority[0];
 	t1_tp.dmiss=0;
 	pthread_attr_init(&t1_attr);
 	pthread_attr_setdetachstate(&t1_attr, PTHREAD_CREATE_DETACHED);
@@ -431,7 +487,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t1_attr, PTHREAD_EXPLICIT_SCHED);
 	t1_par.__sched_priority=t1_tp.priority;
 	pthread_attr_setschedparam(&t1_attr, &t1_par);
-	pthread_create(&t1_tid, &t1_attr, t_task_1, &t1_tp);
+	pthread_create(&t1_tid, &t1_attr, t_task, &t1_tp);
 }
 
 void create_task_2(void)
@@ -442,10 +498,10 @@ cpu_set_t	cpuset;
 	CPU_SET(0, &cpuset);
 
 	//create task 2
-	t2_tp.arg=0;
-	t2_tp.period=1200;
-	t2_tp.deadline=1000;
-	t2_tp.priority=70;
+	t2_tp.arg=2;
+	t2_tp.period=period[1];
+	t2_tp.deadline=deadline[1];
+	t2_tp.priority=priority[1];
 	t2_tp.dmiss=0;
 	pthread_attr_init(&t2_attr);
 	pthread_attr_setdetachstate(&t2_attr, PTHREAD_CREATE_DETACHED);
@@ -453,7 +509,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t2_attr, PTHREAD_EXPLICIT_SCHED);
 	t2_par.__sched_priority=t2_tp.priority;
 	pthread_attr_setschedparam(&t2_attr, &t2_par);
-	pthread_create(&t2_tid, &t2_attr, t_task_2, &t2_tp);
+	pthread_create(&t2_tid, &t2_attr, t_task, &t2_tp);
 }
 
 void create_task_3(void)
@@ -464,10 +520,10 @@ cpu_set_t	cpuset;
 	CPU_SET(0, &cpuset);
 
 	//create task 3
-	t3_tp.arg=0;
-	t3_tp.period=1200;
-	t3_tp.deadline=1000;
-	t3_tp.priority=80;
+	t3_tp.arg=3;
+	t3_tp.period=period[2];
+	t3_tp.deadline=deadline[2];
+	t3_tp.priority=priority[2];
 	t3_tp.dmiss=0;
 	pthread_attr_init(&t3_attr);
 	pthread_attr_setdetachstate(&t3_attr, PTHREAD_CREATE_DETACHED);
@@ -475,7 +531,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t3_attr, PTHREAD_EXPLICIT_SCHED);
 	t3_par.__sched_priority=t3_tp.priority;
 	pthread_attr_setschedparam(&t3_attr, &t3_par);
-	pthread_create(&t3_tid, &t3_attr, t_task_3, &t3_tp);
+	pthread_create(&t3_tid, &t3_attr, t_task, &t3_tp);
 }
 
 void create_task_4(void)
@@ -486,10 +542,10 @@ cpu_set_t	cpuset;
 	CPU_SET(0, &cpuset);
 
 	//create task 4
-	t4_tp.arg=0;
-	t4_tp.period=1200;
-	t4_tp.deadline=1000;
-	t4_tp.priority=90;
+	t4_tp.arg=4;
+	t4_tp.period=period[3];
+	t4_tp.deadline=deadline[3];
+	t4_tp.priority=priority[3];
 	t4_tp.dmiss=0;
 	pthread_attr_init(&t4_attr);
 	pthread_attr_setdetachstate(&t4_attr, PTHREAD_CREATE_DETACHED);
@@ -497,7 +553,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t4_attr, PTHREAD_EXPLICIT_SCHED);
 	t4_par.__sched_priority=t4_tp.priority;
 	pthread_attr_setschedparam(&t4_attr, &t4_par);
-	pthread_create(&t4_tid, &t4_attr, t_task_4, &t4_tp);
+	pthread_create(&t4_tid, &t4_attr, t_task, &t4_tp);
 }
 
 //--------------------------------------------------------------------------
@@ -520,13 +576,11 @@ void stop_task(void)
 			perror("Error in destroy mutex b pip");
 	}
 	else
-	{
-		pthread_mutex_destroy(&mux_a_pcp);
-		pthread_mutex_destroy(&mux_b_pcp);		
-/*		if(pthread_mutex_destroy(&mux_a_pcp)!=0)
+	{		
+		if(pthread_mutex_destroy(&mux_a_pcp)!=0)
 			perror("Error in destroy mutex a pcp");
 		if(pthread_mutex_destroy(&mux_b_pcp)!=0)
-			perror("Error in destroy mutex b pcp");*/
+			perror("Error in destroy mutex b pcp");
 	}
 	
 	pthread_cancel(t3_tid);
@@ -887,332 +941,168 @@ int				mod;
 }
 
 //--------------------------------------------------------------------------
-//GENERIC TASK 1
+//GENERIC TASK
 //--------------------------------------------------------------------------
 
-void * t_task_1(void * arg)
+void * t_task(void * arg) 
 {
-struct 	task_par	*tp;
-struct	timespec	t;
-struct	timespec	at;
-int					mod;
+	struct 	task_par	*tp;
+	struct	timespec	t;
+	struct	timespec	at;
+	int					mod;
+	int					c=0,ca=0;
+	int					argument;
+	char				task_name[10];
 
-	tp= (struct task_par*)arg;
-	set_period(tp);
-	
-	//draw parameters
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t1_tp, 1, mod);
-	draw_activation(t1_tp, 1, mod);
-
-	while(1){
-		use = true;
-		run_task=1;
-		control_CPU("TASK 1",pthread_self());
+		tp= (struct task_par*)arg;
+		set_period(tp);
+		argument=(*tp).arg;
+		printf("argument %i: %i \n",argument, argument);
+		sprintf(task_name, "TASK %i",argument);
 		
+		//draw parameters
 		if(pip)
-			pthread_mutex_lock(&mux_a_pip);
+			mod=0;
 		else
-			pthread_mutex_lock(&mux_a_pcp);
-
-		a = 1;
+			mod=1;
+		draw_deadline(*tp, argument, mod);
+		draw_activation(*tp, argument, mod);
 		
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t, 100);
-		
-		if(stop==1)
-		{
-			if(pip)
-			{
-				if(pthread_mutex_unlock(&mux_a_pip)!=0)
-					perror("Error unlock a pip task 1");
-			}
-			else
-			{
-				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
-					perror("Error unlock a pcp task 1");
-			}
-			free_r++;
-			pthread_exit(0);
-		}
-		
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			a = 1;
-			use=true;
-			run_task=1;
-		}while(time_cmp(at, t)<=0);
-
-		if(pip)	
-			pthread_mutex_lock(&mux_b_pip);
-		else
-			pthread_mutex_lock(&mux_b_pcp);
-
-		b = 1;
+		while(1){
+			use = true;
+			run_task=argument;
+			control_CPU(task_name,pthread_self());	
 			
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t, 400);
-		
-		if(stop==1)
-		{
-			if(pip)
-			{
-				if(pthread_mutex_unlock(&mux_a_pip)!=0)
-					perror("Error unlock a pip task 1");
-			}
-			else
-			{
-				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
-					perror("Error unlock a pcp task 1");
-			}
-			free_r++;
-			pthread_exit(0);
-		}
-		
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			b = 1;
-			use=true;
-			run_task=1;
-		}while(time_cmp(at, t)<=0);
-
-		b=0;
-		
-		if(pip)
-			pthread_mutex_unlock(&mux_b_pip);
-		else
-			pthread_mutex_unlock(&mux_b_pcp);
-
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		
-		if(stop==1)
-		{
-			if(pip)
-			{
-				if(pthread_mutex_unlock(&mux_a_pip)!=0)
-					perror("Error unlock a pip task 1");
-			}
-			else
-			{
-				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
-					perror("Error unlock a pcp task 1");
-			}
-			free_r++;
-			pthread_exit(0);
-		}		
-		
-		time_add_ms(&t, 100);
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			use=true;
-			run_task=1;
-		}while(time_cmp(at, t)<=0);
-
-		a = 0;
-
-		if(pip)
-			pthread_mutex_unlock(&mux_a_pip);
-		else
-			pthread_mutex_unlock(&mux_a_pcp);
-		
-		if(stop==1)
-		{
-			free_r++;
-			pthread_exit(0);			
-		}
-		wait_for_period(tp);
-	}
-}
-
-//--------------------------------------------------------------------------
-//GENERIC TASK 2
-//--------------------------------------------------------------------------
-
-void * t_task_2(void * arg)
-{
-struct	task_par	*tp;
-struct	timespec 	t;
-struct	timespec 	at;
-int					mod;
-
-	tp= (struct task_par*)arg;
-	set_period(tp);
-	
-	//draw parameters
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t2_tp, 2, mod);
-	draw_activation(t2_tp, 2, mod);
-
-	while(1){
-		use = true;
-		run_task=2;
-		
-		control_CPU("TASK 2",pthread_self());
-		
-		if(pip)
-			pthread_mutex_lock(&mux_b_pip);
-		else
-			pthread_mutex_lock(&mux_b_pcp);
-
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t, 300);
-		
-		if(stop==1)
-		{
-			if(pip)
-			{
-				if(pthread_mutex_unlock(&mux_b_pip)!=0)
-					perror("Error in unlock mux b pip task 2");
-			}
-			else
-			{	
-				if(pthread_mutex_unlock(&mux_b_pcp)!=0)
-					perror("Error in unlock mux b pcp task 2");
-			}
-			free_r++;
-			pthread_exit(0);
-		}
-		
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			b = 2;
-			use=true;
-			run_task=2;
-		}while(time_cmp(at, t)<=0);
-
-		b = 0;
-		
-		if(pip)
-			pthread_mutex_unlock(&mux_b_pip);
-		else
-			pthread_mutex_unlock(&mux_b_pcp);
-		
-		if(stop==1)
-		{
-			free_r++;
-			pthread_exit(0);			
-		}
-		wait_for_period(tp);
-	}
-}
-
-//--------------------------------------------------------------------------
-//GENERIC TASK 3
-//--------------------------------------------------------------------------
-
-void * t_task_3(void * arg)
-{
-struct	task_par	*tp;
-struct	timespec 	t;
-struct	timespec 	at;
-int					mod;
-
-	tp= (struct task_par*)arg;
-	set_period(tp);
-	
-	//draw parameters
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t3_tp, 3, mod);
-	draw_activation(t3_tp, 3, mod);
-
-	while(1){
-		use = true;
-		run_task=3;
-
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t, 300);
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			use=true;
-			run_task=3;
-		}while(time_cmp(at, t)<=0);
-
-		control_CPU("TASK 3",pthread_self());
-		wait_for_period(tp);
-	}
-}
-
-//--------------------------------------------------------------------------
-//GENERIC TASK 4
-//--------------------------------------------------------------------------
-
-void * t_task_4(void * arg)
-{
-struct	task_par	*tp;
-struct	timespec 	t;
-struct	timespec 	at;
-int					mod;
-
-	tp= (struct task_par*)arg;
-	set_period(tp);
-	
-	//draw parameters
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	draw_deadline(t4_tp, 4, mod);
-	draw_activation(t4_tp, 4, mod);
-
-	while(1){
-		use = true;
-		run_task=4;
-		control_CPU("TASK 4",pthread_self());
-
-		if(pip)
-			pthread_mutex_lock(&mux_a_pip);
-		else
-			pthread_mutex_lock(&mux_a_pcp);
-
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t, 300);
-		
-		if(stop==1)
-		{
-			if(pip)
-			{	
-				if(pthread_mutex_unlock(&mux_a_pip)!=0)
-					perror("Error unlock mux a pip");
-			}
-			else
-			{
-				if(pthread_mutex_unlock(&mux_a_pcp)!=0)
-					perror("Error unlock mux a pcp");
-			}
-			free_r++;
-			pthread_exit(0);
-		}
-		
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			a = 4;
-			use=true;
-			run_task=4;				
-		}while(time_cmp(at, t)<=0);
-
-		a = 0;
+			c = comp_time[(argument-1)]-sect_a_time[(argument-1)]-sect_b_time[(argument-1)];
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, (c/2));
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				use = true;
+				run_task = argument;
+			}while(time_cmp(at, t)<=0);
 			
-		if(pip)
-			pthread_mutex_unlock(&mux_a_pip);
-		else
-			pthread_mutex_unlock(&mux_a_pcp);
-
-		if(stop==1)
-		{
-			free_r++;
-			pthread_exit(0);
+			if(nested[(argument-1)])
+			{
+				if(pip)
+					pthread_mutex_lock(&mux_a_pip);
+				else
+					pthread_mutex_lock(&mux_a_pcp);
+				a=argument;
+				
+				ca=sect_a_time[(argument-1)]-sect_b_time[(argument-1)];
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, (ca/2));
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					a = argument;
+					use=true;
+					run_task=argument;
+				}while(time_cmp(at, t)<=0);
+				
+				if(pip)
+					pthread_mutex_lock(&mux_b_pip);
+				else
+					pthread_mutex_lock(&mux_b_pcp);
+				b=argument;
+				
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, sect_b_time[(argument-1)]);
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					b=argument;
+					a = argument;
+					use=true;
+					run_task=argument;
+				}while(time_cmp(at, t)<=0);				
+				
+				b=0;				
+				if(pip)
+					pthread_mutex_unlock(&mux_b_pip);
+				else
+					pthread_mutex_unlock(&mux_b_pcp);
+				
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, (ca/2));
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					a = argument;
+					use=true;
+					run_task=argument;
+				}while(time_cmp(at, t)<=0);
+				
+				a=0;				
+				if(pip)
+					pthread_mutex_unlock(&mux_a_pip);
+				else
+					pthread_mutex_unlock(&mux_a_pcp);				
+			}
+			else
+			{
+				if((sect_a_time[(argument-1)])!=0)
+				{
+					if(pip)
+						pthread_mutex_lock(&mux_a_pip);
+					else
+						pthread_mutex_lock(&mux_a_pcp);
+					a = argument;
+					
+					clock_gettime(CLOCK_MONOTONIC, &t);
+					time_add_ms(&t, sect_a_time[(argument-1)]);
+					do{
+						clock_gettime(CLOCK_MONOTONIC, &at);
+						a = argument;
+						use = true;
+						run_task = argument;
+					}while(time_cmp(at, t)<=0);
+					
+					a = 0;
+					if(pip)
+						pthread_mutex_unlock(&mux_a_pip);
+					else
+						pthread_mutex_unlock(&mux_a_pcp);	
+				}
+				
+				if((sect_b_time[(argument-1)])!=0)
+				{
+					if(pip)
+						pthread_mutex_lock(&mux_b_pip);
+					else
+						pthread_mutex_lock(&mux_b_pcp);
+					b = argument;
+					
+					clock_gettime(CLOCK_MONOTONIC, &t);
+					time_add_ms(&t, sect_b_time[(argument-1)]);
+					do{
+						clock_gettime(CLOCK_MONOTONIC, &at);
+						b = argument;
+						use = true;
+						run_task = argument;
+					}while(time_cmp(at, t)<=0);
+					
+					b = 0;
+					if(pip)
+						pthread_mutex_unlock(&mux_b_pip);
+					else
+						pthread_mutex_unlock(&mux_b_pcp);					
+				}
+			}
+			
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, (c/2));
+			do{
+				clock_gettime(CLOCK_MONOTONIC, &at);
+				use = true;
+				run_task = argument;
+			}while(time_cmp(at, t)<=0);			
+			
+			if(stop==1)
+			{
+				free_r++;
+				pthread_exit(0);			
+			}
+			wait_for_period(tp);			
 		}
-		wait_for_period(tp);
-	}
 }
 
 //--------------------------------------------------------------------------
