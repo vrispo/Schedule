@@ -490,13 +490,13 @@ FILE		*f_sched_budget;
 	run_task=0;
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
-	f_sched_budget=fopen("/proc/sys/kernel/sched_rt_runtime_us","w");
+/*	f_sched_budget=fopen("/proc/sys/kernel/sched_rt_runtime_us","w");
 	if(f_sched_budget==NULL){
 		perror("Error in file open /proc/sys/kernel/sched_rt_runtime_us you must run the program as super user ");
 		exit(-1);
 	}
 	fprintf(f_sched_budget,"1000000");
-	fclose(f_sched_budget);
+	fclose(f_sched_budget);*/
 
 
 	write_instruction();
@@ -543,9 +543,10 @@ cpu_set_t	cpuset;
 	pthread_attr_init(&workload_attr);
 	pthread_attr_setdetachstate(&workload_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&workload_attr, sizeof(cpuset), &cpuset);
-	//pthread_attr_setinheritsched(&workload_attr, PTHREAD_EXPLICIT_SCHED);
-	//workload_par.__sched_priority=workload_tp.priority;
-	//pthread_attr_setschedparam(&workload_attr, &workload_par);
+	pthread_attr_setinheritsched(&workload_attr, PTHREAD_EXPLICIT_SCHED);
+	pthread_attr_setschedpolicy(&workload_attr, SCHED_FIFO);
+	workload_par.sched_priority=workload_tp.priority;
+	pthread_attr_setschedparam(&workload_attr, &workload_par);
 	pthread_create(&workload_tid, &workload_attr, workload_task, &workload_tp);
 }
 
@@ -563,9 +564,13 @@ cpu_set_t	cpuset;
 	graphic_tp.dmiss=0;
 	
 	pthread_attr_init(&graphic_attr);
-	pthread_attr_setdetachstate(&graphic_attr, PTHREAD_CREATE_DETACHED);
-	
+	pthread_attr_setdetachstate(&graphic_attr, PTHREAD_CREATE_DETACHED);	
 	pthread_attr_setaffinity_np(&graphic_attr, sizeof(cpuset), &cpuset);
+	
+	pthread_attr_setinheritsched(&graphic_attr, PTHREAD_EXPLICIT_SCHED);
+	pthread_attr_setschedpolicy(&graphic_attr, SCHED_FIFO);
+	graphic_par.sched_priority=graphic_tp.priority;
+	pthread_attr_setschedparam(&graphic_attr, &graphic_par);
 	
 	if(pthread_create(&graphic_tid, &graphic_attr, graphic_task, &graphic_tp)!=0)
 	{
