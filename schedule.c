@@ -18,17 +18,31 @@
 //--------------------------------------------------------------------------
 
 #define WINDOW_H			820
-#define WINDOW_W			900
+#define WINDOW_W			940
 
-#define GRAFIC_H			150
-#define GRAFIC_W			800
-#define ORIGIN_GRAFIC_X		15
+#define GRAPHIC_H			150
+#define GRAPHIC_W			800
+#define ORIGIN_GRAPHIC_X	55
 #define SPACE				20
+
 #define INSTR_H				110
-#define INSTR_W				800
+#define INSTR_W				600
 #define INSTR_L				100
 #define INSTR_X				5
 #define INSTR_Y				10
+
+#define BOX_H				110
+#define BOX_W				250
+#define BOX_L				70
+#define BOX_X				645
+#define BOX_X1				715
+#define BOX_X2				775
+#define BOX_X3				835
+#define BOX_Y				10
+#define BOX_Y1				32
+#define BOX_Y2				54
+#define BOX_Y3				76
+#define BOX_Y4				98
 
 #define	UNIT				10
 #define N_TASK				4
@@ -40,18 +54,20 @@
 //--------------------------------------------------------------------------
 
 void setup (void);
-void setup_grafic(int x, int y, char s[], bool ng);
+void setup_graphic(int x, int y, char s[], bool ng);
 void draw_task_parameter(int mod);
 void write_instruction(void);
+void draw_taskset_box(void);
 
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
 
-void control_CPU(char *task_name, pthread_t	thread);
+void control_CPU(char *task_name, pthread_t	thread, int cpn);
 
 void set_parameter(void);
 
-void create_grafic_task(void);
+void create_workload_task(void);
+void create_graphic_task(void);
 void create_task(void);
 void create_task_1(void);
 void create_task_2(void);
@@ -62,11 +78,10 @@ void stop_task(void);
 void change_time_scale(void);
 
 void multi_exec(int gx, int gy);
-//void current_task(int tsk);
 
 void draw_resource(int gx, int gy);
 
-void * grafic_task(void * arg);
+void * graphic_task(void * arg);
 void * t_task(void * arg);
 void * workload_task(void * arg);
 
@@ -87,8 +102,8 @@ void analysis_time(void);
 int					time_scale[3] = {100, 70, 50};
 int					pox_ts = 0;
 
-char				phgrafic[2][4]= {"PIP","PCP"};
-char				phgraficwl[2][13]= {"PIP workload","PCP workload"};
+char				phgraphic[2][4]= {"PIP","PCP"};
+char				phgraphicwl[2][13]= {"PIP workload","PCP workload"};
 
 int					x = 0;
 int					task[UNIT];
@@ -118,11 +133,12 @@ int					comp_time[N_TASK];
 int					sect_a_time[N_TASK];
 int					sect_b_time[N_TASK];
 bool				nested[N_TASK];
+int					d_miss[N_TASK];
 
-pthread_t			grafic_tid;
-struct task_par		grafic_tp;
-pthread_attr_t		grafic_attr;
-struct sched_param	grafic_par;
+pthread_t			graphic_tid;
+struct task_par		graphic_tp;
+pthread_attr_t		graphic_attr;
+struct sched_param	graphic_par;
 
 pthread_t			t1_tid;
 struct task_par		t1_tp;
@@ -196,7 +212,7 @@ pthread_t	thread;
 		clock_gettime(CLOCK_MONOTONIC, &t);
 		time_add_ms(&t, 50);
 		
-		control_CPU("MAIN",thread);
+		control_CPU("MAIN",thread, 0);
 		do{
 			clock_gettime(CLOCK_MONOTONIC, &at);
 			use = true;
@@ -215,56 +231,128 @@ pthread_t	thread;
 //CONTROL IN THE TASK IS RUNNING ON CORRECT CPU
 //--------------------------------------------------------------------------
 
-void control_CPU(char *task_name, pthread_t	thread)
+void control_CPU(char *task_name, pthread_t	thread, int cpn)
 {
 cpu_set_t	cpuget;
 int			ncpu;
 int			cpu;
 
 	cpu = sched_getcpu();
-	if(cpu!=0)
-		printf("ERROR corrent cpu %s", task_name);
+	if(cpu!=cpn)
+	{
+		printf("Error current cpu %s is not %i \n", task_name, cpn);
+		exit(-1);
+	}
 	pthread_getaffinity_np(thread,sizeof(cpuget),&cpuget);
 	ncpu=CPU_COUNT(&cpuget);
 	if(ncpu!=1){
-		printf("ERROR more than one elegible CPU for: %s", task_name);
+		printf("Error more than one elegible CPU for: %s \n", task_name);
+		exit(-1);
 	}
-	if(CPU_ISSET(0, &cpuget)==0){
-		printf("ERROR cpu 0 not in the elegible set of: %s", task_name);
+	if(CPU_ISSET(cpn, &cpuget)==0){
+		printf("Error cpu %i not in the elegible set of: %s \n", cpn, task_name);
+		exit(-1);
 	}
 }
 
 //--------------------------------------------------------------------------
-//DRAW EMPTY GRAFIC
+//DRAW EMPTY GRAPHIC
 //--------------------------------------------------------------------------
 
-void setup_grafic(int x, int y, char s[], bool ng)
+void setup_graphic(int x, int y, char s[], bool ng)
 {
 int		i = 0;
-char	l[2];
+char	l[10];
 
-	rectfill(screen, (x-5), (y-GRAFIC_H-2), (x+GRAFIC_W), (y+5), 0);
+	rectfill(screen, (x-5), (y-GRAPHIC_H-2), (x+GRAPHIC_W), (y+5), 0);
 
 	//asse y
-	line(screen, x, (y-GRAFIC_H), x, y, 7);
-	line(screen, x, (y-GRAFIC_H), (x-5), (y-GRAFIC_H+5), 7);
-	line(screen, x, (y-GRAFIC_H), (x+5), (y-GRAFIC_H+5), 7);
-	textout_ex(screen, font, s, (x-5), (y-GRAFIC_H-10), 7, -1);
+	line(screen, x, (y-GRAPHIC_H), x, y, 7);
+	line(screen, x, (y-GRAPHIC_H), (x-5), (y-GRAPHIC_H+5), 7);
+	line(screen, x, (y-GRAPHIC_H), (x+5), (y-GRAPHIC_H+5), 7);
+	textout_ex(screen, font, s, (x-5), (y-GRAPHIC_H-10), 7, -1);
 	//asse x
-	line(screen, x, y, (x+GRAFIC_W), y, 7);
-	line(screen, (x+GRAFIC_W-5), (y-5), (x+GRAFIC_W), y, 7);
-	line(screen, (x+GRAFIC_W-5), (y+5), (x+GRAFIC_W), y, 7);
-	textout_ex(screen, font, "t", (x+GRAFIC_W+5), (y+5), 7, -1);
+	line(screen, x, y, (x+GRAPHIC_W), y, 7);
+	line(screen, (x+GRAPHIC_W-5), (y-5), (x+GRAPHIC_W), y, 7);
+	line(screen, (x+GRAPHIC_W-5), (y+5), (x+GRAPHIC_W), y, 7);
+	textout_ex(screen, font, "t", (x+GRAPHIC_W+5), (y+5), 7, -1);
 
 	if(ng){
 		for(i=0; i<=N_TASK; i++){
-			sprintf(l,"%i",i);
-			textout_ex(screen, font, l, (x-10), (y-(i*(H_TASK+10))),0, -1);
-			line(screen, x,(y-(i*(H_TASK+10))),(x+GRAFIC_W),(y-(i*(H_TASK+10))),7);
+			if(i==0)
+				sprintf(l,"MAIN");
+			else
+				sprintf(l,"TASK %i",i);
+			textout_ex(screen, font, l, (x-50), (y-(i*(H_TASK+10))-10), 7, -1);
+			line(screen, x,(y-(i*(H_TASK+10))),(x+GRAPHIC_W),(y-(i*(H_TASK+10))),7);
 		}
+		textout_ex(screen, font, "#D_Miss", (ORIGIN_GRAPHIC_X+GRAPHIC_W+10), (y-(5*(H_TASK+10))+5), 7, 4);
 	}
 }
 
+//--------------------------------------------------------------------------
+//DRAW THE BOX OF THE TASK SET
+//--------------------------------------------------------------------------
+void draw_taskset_box(void)
+{
+char	s[10];
+	
+	rectfill(screen, BOX_X, BOX_Y, (BOX_X+BOX_W), (BOX_Y+BOX_H), 0);
+
+	textout_ex(screen, font, "TASK SET", (BOX_X+7), (BOX_Y-5), 7, -1);
+	line(screen, BOX_X, BOX_Y, (BOX_X+5), BOX_Y, 7);
+	line(screen, (BOX_X+5+BOX_L), BOX_Y, (BOX_X+BOX_W), BOX_Y, 7);
+	line(screen, BOX_X, BOX_Y, BOX_X, (BOX_Y+BOX_H), 7);
+	line(screen, BOX_X, (BOX_Y+BOX_H), (BOX_X+BOX_W), (BOX_Y+BOX_H), 7);
+	line(screen, (BOX_X+BOX_W), (BOX_Y+BOX_H), (BOX_X+BOX_W), 10, 7);
+	
+	line(screen, BOX_X1, (BOX_Y+10), BOX_X1, (BOX_Y+BOX_H-5), 7);
+	line(screen, BOX_X2, (BOX_Y+10), BOX_X2, (BOX_Y+BOX_H-5), 7);
+	line(screen, BOX_X3, (BOX_Y+10), BOX_X3, (BOX_Y+BOX_H-5), 7);
+	
+	//textout_ex(screen, font, "#TASK", (BOX_X+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "T", (BOX_X1+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "D", (BOX_X2+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "PRIO", (BOX_X3+10), (BOX_Y+10), 7, -1);
+	
+	line(screen, (BOX_X+10), BOX_Y1, (BOX_X+BOX_W-10), BOX_Y1, 7);
+	line(screen, (BOX_X+10), BOX_Y2, (BOX_X+BOX_W-10), BOX_Y2, 7);
+	line(screen, (BOX_X+10), BOX_Y3, (BOX_X+BOX_W-10), BOX_Y3, 7);
+	line(screen, (BOX_X+10), BOX_Y4, (BOX_X+BOX_W-10), BOX_Y4, 7);
+	
+	//#task
+	textout_ex(screen, font, "TASK 1", (BOX_X+10), (BOX_Y1+10), 7, -1);
+	textout_ex(screen, font, "TASK 2", (BOX_X+10), (BOX_Y2+10), 7, -1);
+	textout_ex(screen, font, "TASK 3", (BOX_X+10), (BOX_Y3+10), 7, -1);
+	textout_ex(screen, font, "TASK 4", (BOX_X+10), (BOX_Y4+10), 7, -1);
+	//Period
+	sprintf(s, "%i", period[0]);
+	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y1+10), 7, -1);
+	sprintf(s, "%i", period[1]);
+	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y2+10), 7, -1);
+	sprintf(s, "%i", period[2]);
+	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y3+10), 7, -1);
+	sprintf(s, "%i", period[3]);
+	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y4+10), 7, -1);
+	//Deadline
+	sprintf(s, "%i", deadline[0]);
+	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y1+10), 7, -1);
+	sprintf(s, "%i", deadline[1]);
+	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y2+10), 7, -1);
+	sprintf(s, "%i", deadline[2]);
+	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y3+10), 7, -1);
+	sprintf(s, "%i", deadline[3]);
+	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y4+10), 7, -1);
+	//Priority
+	sprintf(s, "%i", priority[0]);
+	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y1+10), 7, -1);
+	sprintf(s, "%i", priority[1]);
+	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y2+10), 7, -1);
+	sprintf(s, "%i", priority[2]);
+	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y3+10), 7, -1);
+	sprintf(s, "%i", priority[3]);
+	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y4+10), 7, -1);
+}
 //--------------------------------------------------------------------------
 //WRITE THE INSTRUCTIONS
 //--------------------------------------------------------------------------
@@ -292,7 +380,7 @@ char s[60];
 
 	sprintf(s, "possesso risorsa a: ");
 	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 7, -1);
-	rectfill(screen, (INSTR_X+165), (INSTR_Y+32.5), (INSTR_X+170), (INSTR_Y+37.5), 1);
+	rectfill(screen, (INSTR_X+165), (INSTR_Y+32.5), (INSTR_X+170), (INSTR_Y+37.5), 15);
 	sprintf(s, "possesso risorsa b: ");
 	textout_ex(screen, font, s, (INSTR_X+180), (INSTR_Y+30), 7, -1);
 	rectfill(screen, (INSTR_X+335), (INSTR_Y+32.5), (INSTR_X+340), (INSTR_Y+37.5), 9);
@@ -315,21 +403,21 @@ char	riga[100];
 char	*tok;
 int		n, i = 0;
 
-printf("sono in set parameter\n");
 	ts=fopen("taskset.txt", "r");
-	if(ts==NULL)
+	if(ts==NULL){
 		perror("Error in file open");
+		exit(-1);
+	}
 	
 	fgets(riga,99,ts);
-
 	do
 	{
 		if(i>=N_TASK)
 		{
-			printf("Error:too much row");
-			exit(0);
+			printf("Error:too much row. The number of task must be 4.\n");
+			exit(-1);
 		}
-			
+
 		tok=strtok(riga, " ");
 		period[i]=atoi(tok);
 		tok=strtok(NULL, " ");
@@ -345,11 +433,43 @@ printf("sono in set parameter\n");
 		tok=strtok(NULL, " ");
 		n=atoi(tok);
 		if(n==1)
+		{
+			if((sect_a_time[i]==0)|(sect_b_time[i]==0))
+			{
+				printf("Error in taskset.txt nested can not be 1 if the use of both the resource is not different from 0 \n");
+				exit(-1);
+			}
+			if(sect_a_time[i]<sect_b_time[i])
+			{
+				printf("Error in taskset.txt in nested mode the use of the second resource must be less than the first because his critical section is nested in the other\n");
+				exit(-1);
+			}
+			if(sect_a_time[i]>comp_time[i])
+			{
+				printf("Error in taskset.txt in every case the total computation time must be greater or equal than the two critical sections\n");
+				exit(-1);
+			}
 			nested[i]=true;
+		}
 		else
-			nested[i]=false;
+		{
+			nested[i]=false;	
+			if((sect_a_time[i]+sect_b_time[i])>comp_time[i])
+			{
+				printf("Error in taskset.txt in every case the total computation time must be greater or equal than the two critical sections\n");
+				exit(-1);
+			}
+		}
+		
 		i++;
 	}while(fgets(riga,99,ts)!=NULL);
+	
+	if(i<N_TASK)
+	{
+		printf("Error:too few row. The number of task must be 4.\n");
+		exit(-1);
+	}
+	
 	for(i=0;i<N_TASK;i++)
 		printf("%i %i %i %i %i %i \n", period[i],deadline[i],priority[i],comp_time[i], sect_a_time[i], sect_b_time[i]);
 	fclose(ts);
@@ -368,28 +488,52 @@ FILE		*f_sched_budget;
 	clear_to_color(screen, 0);
 
 	run_task=0;
-
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 	f_sched_budget=fopen("/proc/sys/kernel/sched_rt_runtime_us","w");
+	if(f_sched_budget==NULL){
+		perror("Error in file open /proc/sys/kernel/sched_rt_runtime_us you must run the program as super user ");
+		exit(-1);
+	}
 	fprintf(f_sched_budget,"1000000");
 	fclose(f_sched_budget);
 
 
 	write_instruction();
+	draw_taskset_box();
 
-	//grafici
-	H_TASK=(GRAFIC_H-(N_TASK*10))/(N_TASK+1);
-	ORIGIN_Y[0]=INSTR_Y+INSTR_H+SPACE+GRAFIC_H;
-	ORIGIN_WL_Y[0]=ORIGIN_Y[0]+SPACE+GRAFIC_H;
-	ORIGIN_Y[1]=ORIGIN_WL_Y[0]+SPACE+GRAFIC_H;
-	ORIGIN_WL_Y[1]=ORIGIN_Y[1]+SPACE+GRAFIC_H;
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[0], phgrafic[0] , true);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[1], phgrafic[1], true);
-	setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
+	//graphici
+	H_TASK=(GRAPHIC_H-(N_TASK*10))/(N_TASK+1);
+	ORIGIN_Y[0]=INSTR_Y+INSTR_H+SPACE+GRAPHIC_H;
+	ORIGIN_WL_Y[0]=ORIGIN_Y[0]+SPACE+GRAPHIC_H;
+	ORIGIN_Y[1]=ORIGIN_WL_Y[0]+SPACE+GRAPHIC_H;
+	ORIGIN_WL_Y[1]=ORIGIN_Y[1]+SPACE+GRAPHIC_H;
+	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[0], phgraphic[0] , true);
+	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
+	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[1], phgraphic[1], true);
+	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 
 	//create workload task
+	create_workload_task();
+	
+	//create graphic task
+	create_graphic_task();
+
+	//create generic tasks
+	create_task();
+}
+
+//--------------------------------------------------------------------------
+//CREATE TASK
+//--------------------------------------------------------------------------
+
+void create_workload_task(void)
+{
+cpu_set_t	cpuset;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(1,&cpuset);
+	
 	workload_tp.arg=0;
 	workload_tp.period=1;
 	workload_tp.deadline=1;
@@ -399,40 +543,46 @@ FILE		*f_sched_budget;
 	pthread_attr_init(&workload_attr);
 	pthread_attr_setdetachstate(&workload_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&workload_attr, sizeof(cpuset), &cpuset);
-	pthread_attr_setinheritsched(&workload_attr, PTHREAD_EXPLICIT_SCHED);
-	workload_par.__sched_priority=workload_tp.priority;
-	pthread_attr_setschedparam(&workload_attr, &workload_par);
-	pthread_create(&grafic_tid, &workload_attr, workload_task, &workload_tp);
-	
-	//create grafic task
-	create_grafic_task();
-
-	//create generic tasks
-	create_task();
+	//pthread_attr_setinheritsched(&workload_attr, PTHREAD_EXPLICIT_SCHED);
+	//workload_par.__sched_priority=workload_tp.priority;
+	//pthread_attr_setschedparam(&workload_attr, &workload_par);
+	pthread_create(&workload_tid, &workload_attr, workload_task, &workload_tp);
 }
 
-//--------------------------------------------------------------------------
-//CREATE TASK
-//--------------------------------------------------------------------------
-void create_grafic_task(void)
+void create_graphic_task(void)
 {
-	grafic_tp.arg=0;
-	grafic_tp.period=time_scale[pox_ts];
-	grafic_tp.deadline=8;
-	grafic_tp.priority=99;
-	grafic_tp.dmiss=0;
-	
+cpu_set_t	cpuset;
 
-	pthread_attr_init(&grafic_attr);
-	pthread_attr_setdetachstate(&grafic_attr, PTHREAD_CREATE_DETACHED);
-	pthread_create(&grafic_tid, &grafic_attr, grafic_task, &grafic_tp);
+	CPU_ZERO(&cpuset);
+	CPU_SET(1,&cpuset);
+	
+	graphic_tp.arg=0;
+	graphic_tp.period=time_scale[pox_ts];
+	graphic_tp.deadline=8;
+	graphic_tp.priority=99;
+	graphic_tp.dmiss=0;
+	
+	pthread_attr_init(&graphic_attr);
+	pthread_attr_setdetachstate(&graphic_attr, PTHREAD_CREATE_DETACHED);
+	
+	pthread_attr_setaffinity_np(&graphic_attr, sizeof(cpuset), &cpuset);
+	
+	if(pthread_create(&graphic_tid, &graphic_attr, graphic_task, &graphic_tp)!=0)
+	{
+		perror("Error in pthread_create graphic task ");
+		exit(-1);
+	}		
 }
 
 void create_task(void)
 {
 struct		timespec t,at;
+int			i;
 
 	stop=0;
+	
+	for(i=0; i<N_TASK; i++)
+		d_miss[i]=0;
 
 	if(pip){
 		create_mux_pip();
@@ -487,7 +637,11 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t1_attr, PTHREAD_EXPLICIT_SCHED);
 	t1_par.__sched_priority=t1_tp.priority;
 	pthread_attr_setschedparam(&t1_attr, &t1_par);
-	pthread_create(&t1_tid, &t1_attr, t_task, &t1_tp);
+	if(pthread_create(&t1_tid, &t1_attr, t_task, &t1_tp)!=0)
+	{
+		perror("Error in pthread_create task 1 ");
+		exit(-1);
+	}
 }
 
 void create_task_2(void)
@@ -509,7 +663,11 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t2_attr, PTHREAD_EXPLICIT_SCHED);
 	t2_par.__sched_priority=t2_tp.priority;
 	pthread_attr_setschedparam(&t2_attr, &t2_par);
-	pthread_create(&t2_tid, &t2_attr, t_task, &t2_tp);
+	if(pthread_create(&t2_tid, &t2_attr, t_task, &t2_tp)!=0)
+	{
+		perror("Error in pthread_create task 2 ");
+		exit(-1);
+	}
 }
 
 void create_task_3(void)
@@ -531,7 +689,11 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t3_attr, PTHREAD_EXPLICIT_SCHED);
 	t3_par.__sched_priority=t3_tp.priority;
 	pthread_attr_setschedparam(&t3_attr, &t3_par);
-	pthread_create(&t3_tid, &t3_attr, t_task, &t3_tp);
+	if(pthread_create(&t3_tid, &t3_attr, t_task, &t3_tp)!=0)
+	{
+		perror("Error in pthread_create task 3 ");
+		exit(-1);
+	}
 }
 
 void create_task_4(void)
@@ -553,7 +715,11 @@ cpu_set_t	cpuset;
 	pthread_attr_setinheritsched(&t4_attr, PTHREAD_EXPLICIT_SCHED);
 	t4_par.__sched_priority=t4_tp.priority;
 	pthread_attr_setschedparam(&t4_attr, &t4_par);
-	pthread_create(&t4_tid, &t4_attr, t_task, &t4_tp);
+	if(pthread_create(&t4_tid, &t4_attr, t_task, &t4_tp)!=0)
+	{
+		perror("Error in pthread_create task 4 ");
+		exit(-1);
+	}
 }
 
 //--------------------------------------------------------------------------
@@ -564,9 +730,7 @@ void stop_task(void)
 {
 	stop=1;
 	
-	do{
-		
-	}while(free_r<3);
+	while(free_r<4);
 
 	if(pip)
 	{
@@ -583,9 +747,7 @@ void stop_task(void)
 			perror("Error in destroy mutex b pcp");
 	}
 	
-	pthread_cancel(t3_tid);
-	pthread_cancel(grafic_tid);	
-	
+	pthread_cancel(graphic_tid);	
 	free_r=0;
 }
 
@@ -602,26 +764,26 @@ int	mod, i=0;
 		pox_ts = 0;
 	}
 
-	pthread_cancel(grafic_tid);
+	pthread_cancel(graphic_tid);
 	write_instruction();
 
-	create_grafic_task();
+	create_graphic_task();
 	
 	if(pip)
 		mod=0;
 	else
 		mod=1;
 	
-	//ridisegno la parte dx del grafico
-	rectfill(screen, ORIGIN_GRAFIC_X+(x*UNIT), (ORIGIN_Y[mod]-GRAFIC_H), (ORIGIN_GRAFIC_X+((x*UNIT)+GRAFIC_W)), (ORIGIN_Y[mod]), 0);
+	//ridisegno la parte dx del graphico
+	rectfill(screen, ORIGIN_GRAPHIC_X+(x*UNIT), (ORIGIN_Y[mod]-GRAPHIC_H), (ORIGIN_GRAPHIC_X+((x*UNIT)+GRAPHIC_W)), (ORIGIN_Y[mod]), 0);
 	//asse x
-	line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)), ORIGIN_Y[mod], (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
-	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]-5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
-	line(screen, (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]+5), (ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
-	textout_ex(screen, font, "t", (ORIGIN_GRAFIC_X+GRAFIC_W+5), (ORIGIN_Y[mod]+5), 0, -1);
+	line(screen, (ORIGIN_GRAPHIC_X+(x*UNIT)), ORIGIN_Y[mod], (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
+	line(screen, (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]-5), (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
+	line(screen, (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]+5), (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
+	textout_ex(screen, font, "t", (ORIGIN_GRAPHIC_X+GRAPHIC_W+5), (ORIGIN_Y[mod]+5), 0, -1);
 
 	for(i=0; i<=N_TASK; i++){
-		line(screen, (ORIGIN_GRAFIC_X+(x*UNIT)),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+((x*UNIT)+(GRAFIC_W-(x*UNIT)))),(ORIGIN_Y[mod]-(i*(H_TASK+10))),7);
+		line(screen, (ORIGIN_GRAPHIC_X+(x*UNIT)),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))),(ORIGIN_Y[mod]-(i*(H_TASK+10))),7);
 	}
 	
 	draw_task_parameter(mod);
@@ -660,7 +822,7 @@ void create_mux_pcp(void)
 }
 
 //--------------------------------------------------------------------------
-//DRAW PARAMETER TASK IN GRAFIC PIP OR PCP
+//DRAW PARAMETER TASK IN GRAPHIC PIP OR PCP
 //--------------------------------------------------------------------------
 
 void draw_task_parameter(int mod)
@@ -716,8 +878,8 @@ int		mod, i;
 						mod=0;
 					else
 						mod=1;
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
-					setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
+					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
+					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
 					pwl = 0;
 					wl = 0;
 					free_ms = 0;
@@ -733,7 +895,7 @@ int		mod, i;
 						a_occupation[i] = 0;
 						b_occupation[i] = 0;
 					}
-					create_grafic_task();
+					create_graphic_task();
 					create_task();
 				}
 				else
@@ -749,8 +911,8 @@ int		mod, i;
 					mod=0;
 				if(!stop)
 					stop_task();
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
+				setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
+				setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
 				pwl = 0;
 				wl = 0;
 				free_ms = 0;
@@ -767,7 +929,7 @@ int		mod, i;
 					b_occupation[i] = 0;
 				}
 				pip=!pip;
-				create_grafic_task();
+				create_graphic_task();
 				create_task();
 				break;
 			}
@@ -783,7 +945,7 @@ int		mod, i;
 }
 
 //--------------------------------------------------------------------------
-//DRAW DEADLINE OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAFIC
+//DRAW DEADLINE OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAPHIC
 //--------------------------------------------------------------------------
 
 void draw_deadline(struct task_par tp, int i, int mod)
@@ -800,15 +962,15 @@ struct timespec	at;
 	
 	xd=((x+(xd/time_scale[pox_ts]))*UNIT);
 	
-	for(j=0; xd<GRAFIC_W; j++){
+	for(j=0; xd<GRAPHIC_W; j++){
 		if(xd>=0)
-			line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),12);
+			line(screen, (ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),12);
 		xd=((x+((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts]))*UNIT);
 	}
 }
 
 //--------------------------------------------------------------------------
-//DRAW ACTIVATION OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAFIC
+//DRAW ACTIVATION OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAPHIC
 //--------------------------------------------------------------------------
 
 void draw_activation(struct task_par tp, int i, int mod)
@@ -823,9 +985,9 @@ struct timespec	at;
 	time_sub_ms(tp.at, at, &nat);
 	nat=nat-tp.period;
 	xd=(int)((x+(nat/time_scale[pox_ts]))*UNIT);
-	for(j=0; xd<GRAFIC_W; j++){
+	for(j=0; xd<GRAPHIC_W; j++){
 		if(xd>=0)
-			line(screen, (ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAFIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),14);
+			line(screen, (ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),14);
 		xd=(int)((x+((nat+(j*tp.period))/time_scale[pox_ts]))*UNIT);
 	}
 }
@@ -867,9 +1029,9 @@ int i, n, ax, bx;
 			line(screen, (gx+(x*UNIT)+i), (gy-(ax*(H_TASK+10))), (gx+(x*UNIT)+i), (gy-(H_TASK/4)-(ax*(H_TASK+10))), col);
 		}
 		
-		if((ax!=0)&(bx!=a))
+		if((ax!=0)&(bx!=ax))
 		{
-			col = 1;
+			col = 15;
 			line(screen, (gx+(x*UNIT)+i), (gy-(ax*(H_TASK+10))), (gx+(x*UNIT)+i), (gy-(H_TASK/4)-(ax*(H_TASK+10))), col);
 		}
 		
@@ -882,20 +1044,23 @@ int i, n, ax, bx;
 }
 
 //--------------------------------------------------------------------------
-//GRAFIC TASK
+//GRAPHIC TASK
 //--------------------------------------------------------------------------
 
-void * grafic_task(void * arg)
+void * graphic_task(void * arg)
 {
 struct timespec	at;
 int				i=0;
 int				mod;
+char			l[2];
 
-	set_period(&grafic_tp);	
+	set_period(&graphic_tp);	
 
 	while(1){
+		
+		control_CPU("Graphic task", pthread_self(),1);
 		if(!stop){
-			//calcola workload e fai grafico
+			//calcola workload e fai graphico
 			pwl = wl;
 			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
 			//printf("freems=%d wl=%f nu=%d+ ", free_ms, wl, nu);
@@ -909,19 +1074,24 @@ int				mod;
 			clock_gettime(CLOCK_MONOTONIC, &at);
 
 			if(run_task!=7)
-				multi_exec(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
+				multi_exec(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
 
-			draw_resource(ORIGIN_GRAFIC_X, ORIGIN_Y[mod]);
+			draw_resource(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
 
 			if(x>0)
-				line(screen, (ORIGIN_GRAFIC_X+((x-1)*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*pwl)), (ORIGIN_GRAFIC_X+(x*UNIT)), (ORIGIN_WL_Y[mod]-(GRAFIC_H*wl)), 4);
+				line(screen, (ORIGIN_GRAPHIC_X+((x-1)*UNIT)), (ORIGIN_WL_Y[mod]-(GRAPHIC_H*pwl)), (ORIGIN_GRAPHIC_X+(x*UNIT)), (ORIGIN_WL_Y[mod]-(GRAPHIC_H*wl)), 4);
 
+			for(i=1; i<=N_TASK; i++){
+				sprintf(l," %i ", d_miss[(i-1)]);
+				textout_ex(screen, font, l, (ORIGIN_GRAPHIC_X+GRAPHIC_W+SPACE), (ORIGIN_Y[mod]-(i*(H_TASK+10))-10), 7, 4);
+			}
+			
 			run_task = 7;
 			x++;
-			if((x*UNIT)>=GRAFIC_W){
+			if((x*UNIT)>=GRAPHIC_W){
 				x=0;					
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_Y[mod], phgrafic[mod], true);
-				setup_grafic(ORIGIN_GRAFIC_X, ORIGIN_WL_Y[mod], phgraficwl[mod], false);
+				setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
+				setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
 				draw_task_parameter(mod);			
 			}
 		}
@@ -936,7 +1106,7 @@ int				mod;
 		for(i=0; i<UNIT; i++)
 			task[i] = 7;
 		
-		wait_for_period(&grafic_tp);
+		wait_for_period(&graphic_tp);
 	}
 }
 
@@ -950,49 +1120,51 @@ void * t_task(void * arg)
 	struct	timespec	t;
 	struct	timespec	at;
 	int					mod;
-	int					c=0,ca=0;
+	int					c=0,ca=0, cb=0;
 	int					argument;
 	char				task_name[10];
 
 		tp= (struct task_par*)arg;
 		set_period(tp);
 		argument=(*tp).arg;
-		printf("argument %i: %i \n",argument, argument);
-		sprintf(task_name, "TASK %i",argument);
+		
+		ca=sect_a_time[(argument-1)];
+		cb=sect_b_time[(argument-1)];
 		
 		//draw parameters
 		if(pip)
 			mod=0;
 		else
 			mod=1;
+		
 		draw_deadline(*tp, argument, mod);
 		draw_activation(*tp, argument, mod);
 		
 		while(1){
 			use = true;
 			run_task=argument;
-			control_CPU(task_name,pthread_self());	
-			
-			c = comp_time[(argument-1)]-sect_a_time[(argument-1)]-sect_b_time[(argument-1)];
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, (c/2));
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				use = true;
-				run_task = argument;
-			}while(time_cmp(at, t)<=0);
+			control_CPU(task_name,pthread_self(),0);	
 			
 			if(nested[(argument-1)])
 			{
+				c=comp_time[(argument-1)]-ca;
+				//printf("c nested %i",c);
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, (c/2));
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					use = true;
+					run_task = argument;
+				}while(time_cmp(at, t)<=0);
+				
 				if(pip)
 					pthread_mutex_lock(&mux_a_pip);
 				else
 					pthread_mutex_lock(&mux_a_pcp);
 				a=argument;
-				
-				ca=sect_a_time[(argument-1)]-sect_b_time[(argument-1)];
+
 				clock_gettime(CLOCK_MONOTONIC, &t);
-				time_add_ms(&t, (ca/2));
+				time_add_ms(&t, ((ca-cb)/2));
 				do{
 					clock_gettime(CLOCK_MONOTONIC, &at);
 					a = argument;
@@ -1007,7 +1179,7 @@ void * t_task(void * arg)
 				b=argument;
 				
 				clock_gettime(CLOCK_MONOTONIC, &t);
-				time_add_ms(&t, sect_b_time[(argument-1)]);
+				time_add_ms(&t, cb);
 				do{
 					clock_gettime(CLOCK_MONOTONIC, &at);
 					b=argument;
@@ -1023,7 +1195,7 @@ void * t_task(void * arg)
 					pthread_mutex_unlock(&mux_b_pcp);
 				
 				clock_gettime(CLOCK_MONOTONIC, &t);
-				time_add_ms(&t, (ca/2));
+				time_add_ms(&t, ((ca-cb)/2));
 				do{
 					clock_gettime(CLOCK_MONOTONIC, &at);
 					a = argument;
@@ -1035,17 +1207,36 @@ void * t_task(void * arg)
 				if(pip)
 					pthread_mutex_unlock(&mux_a_pip);
 				else
-					pthread_mutex_unlock(&mux_a_pcp);				
+					pthread_mutex_unlock(&mux_a_pcp);	
+				
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, (c/2));
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					use = true;
+					run_task = argument;
+				}while(time_cmp(at, t)<=0);
 			}
 			else
 			{
-				if((sect_a_time[(argument-1)])!=0)
+				c=comp_time[(argument-1)]-ca-cb;
+				//printf("c not nested %i",c);
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, (c/2));
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					use = true;
+					run_task = argument;
+				}while(time_cmp(at, t)<=0);
+				
+				if(ca!=0)
 				{
 					if(pip)
 						pthread_mutex_lock(&mux_a_pip);
 					else
 						pthread_mutex_lock(&mux_a_pcp);
 					a = argument;
+					//printf("sono in ca di %i \n",argument);
 					
 					clock_gettime(CLOCK_MONOTONIC, &t);
 					time_add_ms(&t, sect_a_time[(argument-1)]);
@@ -1063,7 +1254,7 @@ void * t_task(void * arg)
 						pthread_mutex_unlock(&mux_a_pcp);	
 				}
 				
-				if((sect_b_time[(argument-1)])!=0)
+				if(cb!=0)
 				{
 					if(pip)
 						pthread_mutex_lock(&mux_b_pip);
@@ -1086,22 +1277,26 @@ void * t_task(void * arg)
 					else
 						pthread_mutex_unlock(&mux_b_pcp);					
 				}
-			}
-			
-			clock_gettime(CLOCK_MONOTONIC, &t);
-			time_add_ms(&t, (c/2));
-			do{
-				clock_gettime(CLOCK_MONOTONIC, &at);
-				use = true;
-				run_task = argument;
-			}while(time_cmp(at, t)<=0);			
+				
+				clock_gettime(CLOCK_MONOTONIC, &t);
+				time_add_ms(&t, (c/2));
+				do{
+					clock_gettime(CLOCK_MONOTONIC, &at);
+					use = true;
+					run_task = argument;
+				}while(time_cmp(at, t)<=0);
+			}		
 			
 			if(stop==1)
 			{
 				free_r++;
 				pthread_exit(0);			
 			}
-			wait_for_period(tp);			
+			
+			deadline_miss(tp);
+			d_miss[argument-1]=(*tp).dmiss;
+			
+			wait_for_period(tp);
 		}
 }
 
@@ -1112,12 +1307,13 @@ void * t_task(void * arg)
 void * workload_task(void * arg)
 {
 struct	task_par	*tp;
-int		cpu;
 
 		tp= (struct task_par*)arg;
 		set_period(tp);
 
-		while(1){
+		while(1){			
+			control_CPU("workload task", pthread_self(), 1);
+			
 			if((!use)&(free_ms<time_scale[pox_ts]))
 				free_ms++;
 			
@@ -1135,9 +1331,6 @@ int		cpu;
 			use = false;
 			nu++;
 			
-			cpu = sched_getcpu();
-			if(cpu!=0)
-				printf("ERRORE CPU ");
 			wait_for_period(tp);
 		}
 }
