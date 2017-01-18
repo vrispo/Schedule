@@ -13,6 +13,16 @@
 
 #include "timeplus.h"
 
+void timestamp(struct timespec ts)
+{
+int		s,ns;
+	
+	s = ts.tv_sec;
+	ns = ts.tv_nsec;
+	
+	printf("timestamp: %i %i\n",s,ns);
+}
+
 void time_copy(struct timespec *td, struct timespec ts)
 {
 	td->tv_sec = ts.tv_sec;
