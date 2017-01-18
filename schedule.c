@@ -67,13 +67,13 @@ void control_CPU(char *task_name, pthread_t	thread, int cpn);
 void set_parameter(void);
 
 void create_workload_task(void);
+void create_main_task(void);
 void create_graphic_task(void);
 void create_task(void);
 void create_task_1(void);
 void create_task_2(void);
 void create_task_3(void);
 void create_task_4(void);
-void stop_task(void);
 
 void change_time_scale(void);
 
@@ -84,6 +84,7 @@ void draw_resource(int gx, int gy);
 void * graphic_task(void * arg);
 void * t_task(void * arg);
 void * workload_task(void * arg);
+void * m_task(void * arg);
 
 void draw_deadline(struct task_par tp, int i, int mod);
 void draw_activation(struct task_par tp,int i, int mod);
@@ -165,6 +166,11 @@ struct task_par		workload_tp;
 pthread_attr_t		workload_attr;
 struct sched_param	workload_par;
 
+pthread_t			m_tid;
+struct task_par		m_tp;
+pthread_attr_t		m_attr;
+struct sched_param	m_par;
+
 int					max_prio_a = 90;
 int					max_prio_b = 70;
 int					a = 0;
@@ -190,7 +196,6 @@ pthread_mutexattr_t	mattr_pcp;
 
 int main(int argc, char * argv[])
 {
-struct		timespec t, at;
 cpu_set_t	cpuset;
 pthread_t	thread;
 
@@ -202,25 +207,12 @@ pthread_t	thread;
 
 	set_parameter();
 	setup();
+	//create main task
+	create_main_task();
 
 	while(run)
 	{
-		use = true;
-		run_task=0;
-		analysis_key();
-		
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t, 50);
-		
-		control_CPU("MAIN",thread, 0);
-		do{
-			clock_gettime(CLOCK_MONOTONIC, &at);
-			use = true;
-			run_task=0;
-		}while(time_cmp(at, t)<=0);
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		time_add_ms(&t,400);		
-		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
+
 	}
 
 	allegro_exit();
@@ -478,7 +470,7 @@ int		n, i = 0;
 void setup(void)
 {
 cpu_set_t	cpuset;
-FILE		*f_sched_budget;
+//FILE		*f_sched_budget;
 
 	allegro_init();
 	install_keyboard();
@@ -512,7 +504,7 @@ FILE		*f_sched_budget;
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[0], "PIP workload", false);
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[1], phgraphic[1], true);
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
-
+	
 	//create workload task
 	create_workload_task();
 	
@@ -526,6 +518,35 @@ FILE		*f_sched_budget;
 //--------------------------------------------------------------------------
 //CREATE TASK
 //--------------------------------------------------------------------------
+
+void create_main_task(void)
+{
+cpu_set_t	cpuset;
+
+	CPU_ZERO(&cpuset);
+	CPU_SET(0,&cpuset);
+	
+	m_tp.arg=0;
+	m_tp.period=500;
+	m_tp.deadline=200;
+	m_tp.priority=99;
+	m_tp.dmiss=0;
+	
+	pthread_attr_init(&m_attr);
+	pthread_attr_setdetachstate(&m_attr, PTHREAD_CREATE_DETACHED);	
+	pthread_attr_setaffinity_np(&m_attr, sizeof(cpuset), &cpuset);
+	
+	pthread_attr_setinheritsched(&m_attr, PTHREAD_EXPLICIT_SCHED);
+	pthread_attr_setschedpolicy(&m_attr, SCHED_FIFO);
+	m_par.sched_priority=m_tp.priority;
+	pthread_attr_setschedparam(&m_attr, &m_par);
+	
+	if(pthread_create(&m_tid, &m_attr, m_task, &m_tp)!=0)
+	{
+		perror("Error in pthread_create main task ");
+		exit(-1);
+	}		
+}
 
 void create_workload_task(void)
 {
@@ -732,35 +753,6 @@ cpu_set_t	cpuset;
 }
 
 //--------------------------------------------------------------------------
-//STOP TASK
-//--------------------------------------------------------------------------
-
-void stop_task(void)
-{
-	stop=1;
-	
-	while(free_r<4);
-
-	if(pip)
-	{
-		if(pthread_mutex_destroy(&mux_a_pip)!=0)
-			perror("Error in destroy mutex a pip");
-		if(pthread_mutex_destroy(&mux_b_pip)!=0)
-			perror("Error in destroy mutex b pip");
-	}
-	else
-	{		
-		if(pthread_mutex_destroy(&mux_a_pcp)!=0)
-			perror("Error in destroy mutex a pcp");
-		if(pthread_mutex_destroy(&mux_b_pcp)!=0)
-			perror("Error in destroy mutex b pcp");
-	}
-	
-	pthread_cancel(graphic_tid);	
-	free_r=0;
-}
-
-//--------------------------------------------------------------------------
 //CHANGE TIME SCALE
 //--------------------------------------------------------------------------
 
@@ -836,10 +828,12 @@ void create_mux_pcp(void)
 
 void draw_task_parameter(int mod)
 {
+	draw_deadline(m_tp, 0, mod);
 	draw_deadline(t1_tp, 1, mod);
 	draw_deadline(t2_tp, 2, mod);
 	draw_deadline(t3_tp, 3, mod);
 	draw_deadline(t4_tp, 4, mod);
+	draw_activation(m_tp, 0, mod);
 	draw_activation(t1_tp, 1, mod);
 	draw_activation(t2_tp, 2, mod);
 	draw_activation(t3_tp, 3, mod);
@@ -882,7 +876,9 @@ int		mod, i;
 			}
 			case KEY_SPACE:
 			{	
-				if(stop){
+				printf("sono in stop\n");
+				if(stop)
+				{
 					if(pip)
 						mod=0;
 					else
@@ -904,42 +900,20 @@ int		mod, i;
 						a_occupation[i] = 0;
 						b_occupation[i] = 0;
 					}
-					create_graphic_task();
-					create_task();
+					stop=!stop;
+					create_task();			
 				}
 				else
-					stop_task();
+				{
+					stop=!stop;
+				}				
 				break;
 			}
 			case KEY_RIGHT:
 			{
-				int i;
-				if(pip)
-					mod=1;
-				else
-					mod=0;
-				if(!stop)
-					stop_task();
-				setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
-				setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
-				pwl = 0;
-				wl = 0;
-				free_ms = 0;
-				x=0;
-				a=0;
-				b=0;
-				nu=0;
-				for(i=0;i<UNIT;i++)
-					task[i]=7;
-				for(i=0;i<MAX_MS_SCALE;i++)
-					r_task[i]=7;
-				for(i=0; i<MAX_MS_SCALE; i++){
-					a_occupation[i] = 0;
-					b_occupation[i] = 0;
-				}
-				pip=!pip;
-				create_graphic_task();
-				create_task();
+				printf("sono in right\n");
+				stop=!stop;
+				pip=!pip;	
 				break;
 			}
 			case KEY_UP:
@@ -1072,7 +1046,6 @@ char			l[2];
 			//calcola workload e fai graphico
 			pwl = wl;
 			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
-			//printf("freems=%d wl=%f nu=%d+ ", free_ms, wl, nu);
 			free_ms = 0;
 			
 			if(pip)
@@ -1157,7 +1130,6 @@ void * t_task(void * arg)
 			if(nested[(argument-1)])
 			{
 				c=comp_time[(argument-1)]-ca;
-				//printf("c nested %i",c);
 				clock_gettime(CLOCK_MONOTONIC, &t);
 				time_add_ms(&t, (c/2));
 				do{
@@ -1229,7 +1201,6 @@ void * t_task(void * arg)
 			else
 			{
 				c=comp_time[(argument-1)]-ca-cb;
-				//printf("c not nested %i",c);
 				clock_gettime(CLOCK_MONOTONIC, &t);
 				time_add_ms(&t, (c/2));
 				do{
@@ -1245,7 +1216,6 @@ void * t_task(void * arg)
 					else
 						pthread_mutex_lock(&mux_a_pcp);
 					a = argument;
-					//printf("sono in ca di %i \n",argument);
 					
 					clock_gettime(CLOCK_MONOTONIC, &t);
 					time_add_ms(&t, sect_a_time[(argument-1)]);
@@ -1299,12 +1269,49 @@ void * t_task(void * arg)
 			if(stop==1)
 			{
 				free_r++;
+				printf("sto per killarmi\n");
 				pthread_exit(0);			
 			}
 			
 			deadline_miss(tp);
 			d_miss[argument-1]=(*tp).dmiss;
 			
+			wait_for_period(tp);
+		}
+}
+
+//--------------------------------------------------------------------------
+//main TASK
+//--------------------------------------------------------------------------
+
+void * m_task(void * arg)
+{
+struct	task_par	*tp;
+int					mod;
+struct timespec	t,at;
+
+		if(pip)
+			mod=0;
+		else
+			mod=1;
+
+		tp= (struct task_par*)arg;
+		set_period(tp);
+		
+		draw_deadline(*tp, 0, mod);
+		draw_activation(*tp, 0, mod);
+
+		while(1){			
+			control_CPU("m task", pthread_self(), 0);			
+			analysis_key();
+			clock_gettime(CLOCK_MONOTONIC, &t);
+			time_add_ms(&t, 50);
+			do{
+				use = true;
+				run_task=0;
+				clock_gettime(CLOCK_MONOTONIC, &at);
+			}while((time_cmp(at, t)<=0)&(stop==0));
+
 			wait_for_period(tp);
 		}
 }
