@@ -60,7 +60,7 @@ void get_keycodes(char * scan, char * ascii);
 
 void control_CPU(char *task_name, pthread_t	thread, int cpn);
 
-void set_parameter(void);
+void set_parameter(char *nfile);
 
 void create_workload_task(void);
 void create_main_task(void);
@@ -202,7 +202,11 @@ pthread_t	thread;
 	if (pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
 		perror("pthread_setaffinity_np");
 
-	set_parameter();
+	if(argc!=2){
+		printf("Error: Must pass the name of the task set file by command line\n");
+		exit(-1);
+	}
+	set_parameter(argv[1]);
 	setup();
 	//create main task
 	create_main_task();
@@ -393,14 +397,14 @@ int i;
 //			SETUP
 //--------------------------------------------------------------------------------------------
 
-void set_parameter(void)
+void set_parameter(char* nfile)
 {
 FILE	*ts;
 char	riga[100];
 char	*tok;
 int		n, i = 0;
 
-	ts=fopen("taskset.txt", "r");
+	ts=fopen(nfile, "r");
 	if(ts==NULL){
 		perror("Error in file open");
 		exit(-1);
