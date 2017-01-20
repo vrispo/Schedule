@@ -13,9 +13,9 @@
 #include "taskRT.h"
 #include "timeplus.h"
 
-//--------------------------------------------------------------------------
-// GLOBAL CONSTANTS
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			GLOBAL CONSTANTS
+//--------------------------------------------------------------------------------------------
 
 #define WINDOW_H			820
 #define WINDOW_W			940
@@ -26,38 +26,34 @@
 #define SPACE				20
 
 #define INSTR_H				110
-#define INSTR_W				600
+#define INSTR_W				500
 #define INSTR_L				100
 #define INSTR_X				5
 #define INSTR_Y				10
 
 #define BOX_H				110
-#define BOX_W				250
+#define BOX_W				390
 #define BOX_L				70
-#define BOX_X				645
-#define BOX_X1				715
-#define BOX_X2				775
-#define BOX_X3				835
+#define BOX_X				535
+#define BOX_COLUMNS			6
 #define BOX_Y				10
-#define BOX_Y1				32
-#define BOX_Y2				54
-#define BOX_Y3				76
-#define BOX_Y4				98
+#define BOX_ROWS			5
 
 #define	UNIT				10
 #define N_TASK				4
 
 #define MAX_MS_SCALE		100
 
-//--------------------------------------------------------------------------
-//FUNCTION DECLARATIONS
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			FUNCTION DECLARATIONS
+//--------------------------------------------------------------------------------------------
 
 void setup (void);
 void setup_graphic(int x, int y, char s[], bool ng);
 void draw_task_parameter(int mod);
 void write_instruction(void);
 void draw_taskset_box(void);
+void reset(void);
 
 void analysis_key(void);
 void get_keycodes(char * scan, char * ascii);
@@ -96,87 +92,89 @@ int pox_max_array(int a[], int dim);
 int freq_tsk(int a[], int s, int e, int n);
 void analysis_time(void);
 
-//--------------------------------------------------------------------------
-//GLOBAL VARIABLES
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			GLOBAL VARIABLES
+//--------------------------------------------------------------------------------------------
 
-int					time_scale[3] = {100, 70, 50};
-int					pox_ts = 0;
+int			time_scale[3] = {100, 70, 50};
+int			pox_ts = 0;
 
-char				phgraphic[2][4]= {"PIP","PCP"};
-char				phgraphicwl[2][13]= {"PIP workload","PCP workload"};
+char			phgraphic[2][4]= {"PIP","PCP"};
+char			phgraphicwl[2][13]= {"PIP workload","PCP workload"};
 
-int					x = 0;
-int					task[UNIT];
-int					nu = 0;
-int					r_task[MAX_MS_SCALE];
+int			x = 0;
+int			task[UNIT];
+int			nu = 0;
+int			r_task[MAX_MS_SCALE];
 
-bool				use = false;
-int					free_ms = 0;		//number of ms that the CPU is free
-double				wl = 0;				//actual workload
-double				pwl = 0;			//previous workload
+bool			use = false;
+int			free_ms = 0;		//number of ms that the CPU is free
+double			wl = 0;			//actual workload
+double			pwl = 0;		//previous workload
 
-bool				run = TRUE;
-int					run_task;
-int					stop=0;
-int					free_r=0;
+bool			run = TRUE;
+int			run_task;
+int			stop=0;
+int			free_r=0;
 
-bool				pip = TRUE;
+bool			pip = TRUE;
 
-int					ORIGIN_Y[2];		//#0:PIP #1:PCP
-int					ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
-int					H_TASK;
+int			ORIGIN_Y[2];		//#0:PIP #1:PCP
+int			ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
+int			H_TASK;
 
-int					period[N_TASK];
-int					deadline[N_TASK];
-int					priority[N_TASK];
-int					comp_time[N_TASK];
-int					sect_a_time[N_TASK];
-int					sect_b_time[N_TASK];
-bool				nested[N_TASK];
-int					d_miss[N_TASK];
+int			period[N_TASK];
+int			deadline[N_TASK];
+int			priority[N_TASK];
+int			comp_time[N_TASK];
+int			sect_a_time[N_TASK];
+int			sect_b_time[N_TASK];
+bool			nested[N_TASK];
+int			d_miss[N_TASK];
 
-pthread_t			graphic_tid;
+pthread_t		graphic_tid;
 struct task_par		graphic_tp;
 pthread_attr_t		graphic_attr;
 struct sched_param	graphic_par;
 
-pthread_t			t1_tid;
+pthread_t		t1_tid;
 struct task_par		t1_tp;
 pthread_attr_t		t1_attr;
 struct sched_param	t1_par;
 
-pthread_t			t2_tid;
+pthread_t		t2_tid;
 struct task_par		t2_tp;
 pthread_attr_t		t2_attr;
 struct sched_param	t2_par;
 
-pthread_t			t3_tid;
+pthread_t		t3_tid;
 struct task_par		t3_tp;
 pthread_attr_t		t3_attr;
 struct sched_param	t3_par;
 
-pthread_t			t4_tid;
+pthread_t		t4_tid;
 struct task_par		t4_tp;
 pthread_attr_t		t4_attr;
 struct sched_param	t4_par;
 
-pthread_t			workload_tid;
+pthread_t		workload_tid;
 struct task_par		workload_tp;
 pthread_attr_t		workload_attr;
 struct sched_param	workload_par;
 
-pthread_t			m_tid;
+pthread_t		m_tid;
 struct task_par		m_tp;
 pthread_attr_t		m_attr;
 struct sched_param	m_par;
 
-int					max_prio_a = 90;
-int					max_prio_b = 70;
-int					a = 0;
-int					a_occupation[MAX_MS_SCALE];
-int					b = 0;
-int					b_occupation[MAX_MS_SCALE];
+int			max_prio_a = 90;
+int			max_prio_b = 70;
+int			a = 0;
+int			a_occupation[MAX_MS_SCALE];
+int			b = 0;
+int			b_occupation[MAX_MS_SCALE];
+
+pthread_barrier_t	stop_barrier;
 
 pthread_mutex_t		mux_a_pip;
 pthread_mutex_t 	mux_b_pip;
@@ -186,13 +184,13 @@ pthread_mutex_t		mux_a_pcp;
 pthread_mutex_t 	mux_b_pcp;
 pthread_mutexattr_t	mattr_pcp;
 
-//--------------------------------------------------------------------------
-//						FUNCTION DEFINITIONS
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			FUNCTION DEFINITIONS
+//--------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------
-//MAIN
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			MAIN
+//--------------------------------------------------------------------------------------------
 
 int main(int argc, char * argv[])
 {
@@ -210,24 +208,21 @@ pthread_t	thread;
 	//create main task
 	create_main_task();
 
-	while(run)
-	{
-
-	}
+	while(run);
 
 	allegro_exit();
 	return 0;
 }
 
-//--------------------------------------------------------------------------
-//CONTROL IN THE TASK IS RUNNING ON CORRECT CPU
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			CONTROL IN THE TASK IS RUNNING ON CORRECT CPU
+//--------------------------------------------------------------------------------------------
 
 void control_CPU(char *task_name, pthread_t	thread, int cpn)
 {
 cpu_set_t	cpuget;
-int			ncpu;
-int			cpu;
+int		ncpu;
+int		cpu;
 
 	cpu = sched_getcpu();
 	if(cpu!=cpn)
@@ -247,13 +242,13 @@ int			cpu;
 	}
 }
 
-//--------------------------------------------------------------------------
-//DRAW EMPTY GRAPHIC
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			DRAW EMPTY GRAPHIC
+//--------------------------------------------------------------------------------------------
 
 void setup_graphic(int x, int y, char s[], bool ng)
 {
-int		i = 0;
+int	i = 0;
 char	l[10];
 
 	rectfill(screen, (x-5), (y-GRAPHIC_H-2), (x+GRAPHIC_W), (y+5), 0);
@@ -282,13 +277,16 @@ char	l[10];
 	}
 }
 
-//--------------------------------------------------------------------------
-//DRAW THE BOX OF THE TASK SET
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			DRAW THE BOX OF THE TASK SET
+//--------------------------------------------------------------------------------------------
 void draw_taskset_box(void)
 {
 char	s[10];
-	
+int		lcol,lrow,i;
+
+	lcol = BOX_W/BOX_COLUMNS;
+	lrow = BOX_H/BOX_ROWS;
 	rectfill(screen, BOX_X, BOX_Y, (BOX_X+BOX_W), (BOX_Y+BOX_H), 0);
 
 	textout_ex(screen, font, "TASK SET", (BOX_X+7), (BOX_Y-5), 7, -1);
@@ -298,95 +296,103 @@ char	s[10];
 	line(screen, BOX_X, (BOX_Y+BOX_H), (BOX_X+BOX_W), (BOX_Y+BOX_H), 7);
 	line(screen, (BOX_X+BOX_W), (BOX_Y+BOX_H), (BOX_X+BOX_W), 10, 7);
 	
-	line(screen, BOX_X1, (BOX_Y+10), BOX_X1, (BOX_Y+BOX_H-5), 7);
-	line(screen, BOX_X2, (BOX_Y+10), BOX_X2, (BOX_Y+BOX_H-5), 7);
-	line(screen, BOX_X3, (BOX_Y+10), BOX_X3, (BOX_Y+BOX_H-5), 7);
+	for(i=1; i<BOX_COLUMNS; i++)
+		line(screen, (BOX_X+(lcol*i)), (BOX_Y+10), (BOX_X+(lcol*i)), (BOX_Y+BOX_H-5), 7);
 	
-	//textout_ex(screen, font, "#TASK", (BOX_X+10), (BOX_Y+10), 7, -1);
-	textout_ex(screen, font, "T", (BOX_X1+10), (BOX_Y+10), 7, -1);
-	textout_ex(screen, font, "D", (BOX_X2+10), (BOX_Y+10), 7, -1);
-	textout_ex(screen, font, "PRIO", (BOX_X3+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "T", (BOX_X+(lcol*1)+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "D", (BOX_X+(lcol*2)+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "PRIO", (BOX_X+(lcol*3)+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "CS A", (BOX_X+(lcol*4)+10), (BOX_Y+10), 7, -1);
+	textout_ex(screen, font, "CS B", (BOX_X+(lcol*5)+10), (BOX_Y+10), 7, -1);
 	
-	line(screen, (BOX_X+10), BOX_Y1, (BOX_X+BOX_W-10), BOX_Y1, 7);
-	line(screen, (BOX_X+10), BOX_Y2, (BOX_X+BOX_W-10), BOX_Y2, 7);
-	line(screen, (BOX_X+10), BOX_Y3, (BOX_X+BOX_W-10), BOX_Y3, 7);
-	line(screen, (BOX_X+10), BOX_Y4, (BOX_X+BOX_W-10), BOX_Y4, 7);
+	for(i=1; i<BOX_ROWS; i++)
+	line(screen, (BOX_X+10), (BOX_Y+(lrow*i)), (BOX_X+BOX_W-10), (BOX_Y+(lrow*i)), 7);
 	
 	//#task
-	textout_ex(screen, font, "TASK 1", (BOX_X+10), (BOX_Y1+10), 7, -1);
-	textout_ex(screen, font, "TASK 2", (BOX_X+10), (BOX_Y2+10), 7, -1);
-	textout_ex(screen, font, "TASK 3", (BOX_X+10), (BOX_Y3+10), 7, -1);
-	textout_ex(screen, font, "TASK 4", (BOX_X+10), (BOX_Y4+10), 7, -1);
-	//Period
-	sprintf(s, "%i", period[0]);
-	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y1+10), 7, -1);
-	sprintf(s, "%i", period[1]);
-	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y2+10), 7, -1);
-	sprintf(s, "%i", period[2]);
-	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y3+10), 7, -1);
-	sprintf(s, "%i", period[3]);
-	textout_ex(screen, font, s, (BOX_X1+10), (BOX_Y4+10), 7, -1);
-	//Deadline
-	sprintf(s, "%i", deadline[0]);
-	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y1+10), 7, -1);
-	sprintf(s, "%i", deadline[1]);
-	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y2+10), 7, -1);
-	sprintf(s, "%i", deadline[2]);
-	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y3+10), 7, -1);
-	sprintf(s, "%i", deadline[3]);
-	textout_ex(screen, font, s, (BOX_X2+10), (BOX_Y4+10), 7, -1);
-	//Priority
-	sprintf(s, "%i", priority[0]);
-	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y1+10), 7, -1);
-	sprintf(s, "%i", priority[1]);
-	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y2+10), 7, -1);
-	sprintf(s, "%i", priority[2]);
-	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y3+10), 7, -1);
-	sprintf(s, "%i", priority[3]);
-	textout_ex(screen, font, s, (BOX_X3+10), (BOX_Y4+10), 7, -1);
+	textout_ex(screen, font, "TASK 1", (BOX_X+10), (BOX_Y+(lrow*1)+10), 7, -1);
+	textout_ex(screen, font, "TASK 2", (BOX_X+10), (BOX_Y+(lrow*2)+10), 7, -1);
+	textout_ex(screen, font, "TASK 3", (BOX_X+10), (BOX_Y+(lrow*3)+10), 7, -1);
+	textout_ex(screen, font, "TASK 4", (BOX_X+10), (BOX_Y+(lrow*4)+10), 7, -1);
+	
+	for(i=1; i<BOX_ROWS; i++)
+	{
+		//Period
+		sprintf(s, "%i", period[(i-1)]);
+		textout_ex(screen, font, s, (BOX_X+(lcol*1)+10), (BOX_Y+(lrow*i)+10), 7, -1);
+		//Deadline
+		sprintf(s, "%i", deadline[(i-1)]);
+		textout_ex(screen, font, s, (BOX_X+(lcol*2)+10), (BOX_Y+(lrow*i)+10), 7, -1);
+		//Priority
+		sprintf(s, "%i", priority[(i-1)]);
+		textout_ex(screen, font, s, (BOX_X+(lcol*3)+10), (BOX_Y+(lrow*i)+10), 7, -1);
+		//CS A
+		sprintf(s, "%i", sect_a_time[(i-1)]);
+		textout_ex(screen, font, s, (BOX_X+(lcol*4)+10), (BOX_Y+(lrow*i)+10), 7, -1);
+		//CS B
+		sprintf(s, "%i", sect_b_time[(i-1)]);
+		textout_ex(screen, font, s, (BOX_X+(lcol*5)+10), (BOX_Y+(lrow*i)+10), 7, -1);
+	}
 }
-//--------------------------------------------------------------------------
-//WRITE THE INSTRUCTIONS
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			WRITE THE INSTRUCTIONS
+//--------------------------------------------------------------------------------------------
 
 void write_instruction(void)
 {
 char s[60];
 
+	//do the box for the instructions
 	rectfill(screen, INSTR_X, INSTR_Y, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 0);
-
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 7, -1);
 	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 7);
 	line(screen, (INSTR_X+5+INSTR_L), INSTR_Y, (INSTR_X+INSTR_W), INSTR_Y, 7);
 	line(screen, INSTR_X, INSTR_Y, INSTR_X, (INSTR_Y+INSTR_H), 7);
 	line(screen, INSTR_X, (INSTR_Y+INSTR_H), (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 7);
 	line(screen, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), (INSTR_X+INSTR_W), 10, 7);
-
+	
 	textout_ex(screen, font, "PRESS KEY ESC TO EXIT", (INSTR_X+10), (INSTR_Y+10), 7, -1);
-
-	sprintf(s, "UNITA' MISURA -> %i ms = ", time_scale[pox_ts]);
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+20), 7, -1);
-	line(screen, (INSTR_X+210), (INSTR_Y+22.5), (INSTR_X+215), (INSTR_Y+22.5), 4);
+	textout_ex(screen, font, "PRESS RIGHT ARROW TO CHANGE FROM PCP TO PIP AND VICEVERSA", (INSTR_X+10), (INSTR_Y+20), 7, -1);
 	sprintf(s, "PRESS UP ARROW TO CHANGE (%i - %i - %i ms)", time_scale[0], time_scale[1], time_scale[2]);
-	textout_ex(screen, font,s , (INSTR_X+220), (INSTR_Y+20), 7, -1);
+	textout_ex(screen, font,s , (INSTR_X+10), (INSTR_Y+30), 7, -1);
 
-	sprintf(s, "possesso risorsa a: ");
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+30), 7, -1);
-	rectfill(screen, (INSTR_X+165), (INSTR_Y+32.5), (INSTR_X+170), (INSTR_Y+37.5), 15);
-	sprintf(s, "possesso risorsa b: ");
-	textout_ex(screen, font, s, (INSTR_X+180), (INSTR_Y+30), 7, -1);
-	rectfill(screen, (INSTR_X+335), (INSTR_Y+32.5), (INSTR_X+340), (INSTR_Y+37.5), 9);
-	sprintf(s, "possesso risorsa a e b: ");
-	textout_ex(screen, font, s, (INSTR_X+350), (INSTR_Y+30), 7, -1);
-	rectfill(screen, (INSTR_X+540), (INSTR_Y+32.5), (INSTR_X+545), (INSTR_Y+37.5), 13);
-
-	sprintf(s, "PRESS RIGHT ARROW TO CHANGE FROM PCP TO PIP AND VICEVERSA");
-	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+40), 7, -1);
+	textout_ex(screen, font, "LEGEND", (INSTR_X+10), (INSTR_Y+50), 7, -1);
+	line(screen, INSTR_X, INSTR_Y+55, (INSTR_X+5), INSTR_Y+55, 7);
+	line(screen, (INSTR_X+5+INSTR_L-45), (INSTR_Y+55), (INSTR_X+INSTR_W), (INSTR_Y+55), 7);
+	sprintf(s, "Actual unit of time -> %i ms = ", time_scale[pox_ts]);
+	textout_ex(screen, font, s, (INSTR_X+10), (INSTR_Y+65), 7, -1);
+	line(screen, (INSTR_X+270), (INSTR_Y+70), (INSTR_X+270+UNIT), (INSTR_Y+70), 4);
+	line(screen, (INSTR_X+270), (INSTR_Y+70), (INSTR_X+270), (INSTR_Y+67), 4);
+	line(screen, (INSTR_X+270+UNIT), (INSTR_Y+70), (INSTR_X+270+UNIT), (INSTR_Y+67), 4);
+	textout_ex(screen, font, "in Critical Section A: ", (INSTR_X+10), (INSTR_Y+75), 7, -1);
+	rectfill(screen, (INSTR_X+200), (INSTR_Y+77.5), (INSTR_X+205), (INSTR_Y+82.5), 15);
+	textout_ex(screen, font, "in Critical Section B: ", (INSTR_X+10), (INSTR_Y+85), 7, -1);
+	rectfill(screen, (INSTR_X+200), (INSTR_Y+87.5), (INSTR_X+205), (INSTR_Y+92.5), 9);
+	textout_ex(screen, font, "in Critical Sections A and B: ", (INSTR_X+10), (INSTR_Y+95), 7, -1);
+	rectfill(screen, (INSTR_X+250), (INSTR_Y+97.5), (INSTR_X+255), (INSTR_Y+102.5), 13);
 }
 
-//--------------------------------------------------------------------------
-//SETUP
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			SETUP
+//--------------------------------------------------------------------------------------------
+
+void reset(void)
+{
+int i;
+
+	for(i=0; i<MAX_MS_SCALE; i++)
+	{
+		r_task[i] = 7;
+		a_occupation[i] = 0;
+		b_occupation[i] = 0;
+	}
+	nu = 0;
+	for(i=0; i<UNIT; i++)
+		task[i] = 7;
+}
+
+//--------------------------------------------------------------------------------------------
+//			SETUP
+//--------------------------------------------------------------------------------------------
 
 void set_parameter(void)
 {
@@ -461,9 +467,7 @@ int		n, i = 0;
 		printf("Error:too few row. The number of task must be 4.\n");
 		exit(-1);
 	}
-	
-	for(i=0;i<N_TASK;i++)
-		printf("%i %i %i %i %i %i \n", period[i],deadline[i],priority[i],comp_time[i], sect_a_time[i], sect_b_time[i]);
+
 	fclose(ts);
 }
 
@@ -505,6 +509,8 @@ cpu_set_t	cpuset;
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[1], phgraphic[1], true);
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 	
+	pthread_barrier_init(&stop_barrier, NULL, 5);
+	
 	//create workload task
 	create_workload_task();
 	
@@ -515,9 +521,9 @@ cpu_set_t	cpuset;
 	create_task();
 }
 
-//--------------------------------------------------------------------------
-//CREATE TASK
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			CREATE TASK
+//--------------------------------------------------------------------------------------------
 
 void create_main_task(void)
 {
@@ -752,9 +758,9 @@ cpu_set_t	cpuset;
 	}
 }
 
-//--------------------------------------------------------------------------
-//CHANGE TIME SCALE
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			CHANGE TIME SCALE
+//--------------------------------------------------------------------------------------------
 
 void change_time_scale(void)
 {
@@ -790,9 +796,9 @@ int	mod, i=0;
 	draw_task_parameter(mod);
 }
 
-//--------------------------------------------------------------------------
-//CREATE A PIP MUTEX
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			CREATE A PIP MUTEX
+//--------------------------------------------------------------------------------------------
 
 void create_mux_pip(void)
 {
@@ -805,9 +811,9 @@ void create_mux_pip(void)
 	pthread_mutexattr_destroy(&mattr_pip);
 }
 
-//--------------------------------------------------------------------------
-//CREATE A PCP MUTEX
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			CREATE A PCP MUTEX
+//--------------------------------------------------------------------------------------------
 
 void create_mux_pcp(void)
 {
@@ -822,9 +828,9 @@ void create_mux_pcp(void)
 	pthread_mutexattr_destroy(&mattr_pip);
 }
 
-//--------------------------------------------------------------------------
-//DRAW PARAMETER TASK IN GRAPHIC PIP OR PCP
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			DRAW PARAMETER TASK IN GRAPHIC PIP OR PCP
+//--------------------------------------------------------------------------------------------
 
 void draw_task_parameter(int mod)
 {
@@ -840,9 +846,9 @@ void draw_task_parameter(int mod)
 	draw_activation(t4_tp, 4, mod);
 }
 
-//--------------------------------------------------------------------------
-//GET THE SCAN CODE AND THE ASCII CODE FROM A READ KEY
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			GET THE SCAN CODE AND THE ASCII CODE FROM A READ KEY
+//--------------------------------------------------------------------------------------------
 
 void get_keycodes(char * scan, char * ascii)
 {
@@ -853,15 +859,15 @@ int k;
 	*scan=k>>8;
 }
 
-//--------------------------------------------------------------------------
-//ANALYSIS KEYBOARD
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			ANALYSIS KEYBOARD
+//--------------------------------------------------------------------------------------------
 
 void analysis_key(void)
 {
 char	scan, ascii;
 bool	keyp=FALSE;
-int		mod, i;
+int		mod, rc;
 
 	keyp=keypressed();
 	if(keyp){
@@ -891,29 +897,40 @@ int		mod, i;
 					x=0;
 					a=0;
 					b=0;
-					nu=0;
-					for(i=0;i<UNIT;i++)
-						task[i]=7;
-					for(i=0;i<MAX_MS_SCALE;i++)
-						r_task[i]=7;
-					for(i=0; i<MAX_MS_SCALE; i++){
-						a_occupation[i] = 0;
-						b_occupation[i] = 0;
-					}
+					reset();
 					stop=!stop;
 					create_task();			
 				}
 				else
 				{
 					stop=!stop;
+					rc = pthread_barrier_wait(&stop_barrier);
+					if((rc !=0) && (rc != PTHREAD_BARRIER_SERIAL_THREAD))
+					{
+						perror("Could not wait on barrier");
+						exit(-1);
+					}
 				}				
 				break;
 			}
 			case KEY_RIGHT:
 			{
-				printf("sono in right\n");
-				stop=!stop;
-				pip=!pip;	
+				if(!stop)
+				{
+					printf("sono in right\n");
+					stop=!stop;
+					pip=!pip;
+					rc = pthread_barrier_wait(&stop_barrier);
+					if((rc !=0) && (rc != PTHREAD_BARRIER_SERIAL_THREAD))
+					{
+						perror("Could not wait on barrier");
+						exit(-1);
+					}
+				}
+				else
+				{
+					pip=!pip;
+				}
 				break;
 			}
 			case KEY_UP:
@@ -927,9 +944,9 @@ int		mod, i;
 	}
 }
 
-//--------------------------------------------------------------------------
-//DRAW DEADLINE OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAPHIC
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			DRAW DEADLINE OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAPHIC
+//--------------------------------------------------------------------------------------------
 
 void draw_deadline(struct task_par tp, int i, int mod)
 {
@@ -947,14 +964,14 @@ struct timespec	at;
 	
 	for(j=0; xd<GRAPHIC_W; j++){
 		if(xd>=0)
-			line(screen, (ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),12);
+			line(screen, (ORIGIN_GRAPHIC_X+xd), (ORIGIN_Y[mod]-(i*(H_TASK+10))), (ORIGIN_GRAPHIC_X+xd), (ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK), 12);
 		xd=((x+((nat+tp.deadline+(j*tp.period))/time_scale[pox_ts]))*UNIT);
 	}
 }
 
-//--------------------------------------------------------------------------
-//DRAW ACTIVATION OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAPHIC
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			DRAW ACTIVATION OF A TASK IN PIP(MOD #0) OR PCP(MOD #1) GRAPHIC
+//--------------------------------------------------------------------------------------------
 
 void draw_activation(struct task_par tp, int i, int mod)
 {
@@ -970,14 +987,14 @@ struct timespec	at;
 	xd=(int)((x+(nat/time_scale[pox_ts]))*UNIT);
 	for(j=0; xd<GRAPHIC_W; j++){
 		if(xd>=0)
-			line(screen, (ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))),(ORIGIN_GRAPHIC_X+xd),(ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK),14);
+			line(screen, (ORIGIN_GRAPHIC_X+xd), (ORIGIN_Y[mod]-(i*(H_TASK+10))), (ORIGIN_GRAPHIC_X+xd), (ORIGIN_Y[mod]-(i*(H_TASK+10))-H_TASK), 14);
 		xd=(int)((x+((nat+(j*tp.period))/time_scale[pox_ts]))*UNIT);
 	}
 }
 
-//--------------------------------------------------------------------------
-//HANDLING MULTI EXEC TASK
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			HANDLING MULTI EXEC TASK
+//--------------------------------------------------------------------------------------------
 
 void multi_exec(int gx, int gy)
 {
@@ -990,9 +1007,9 @@ int	i;
 			line(screen, (gx+(x*UNIT)+i), (gy-(task[i]*(H_TASK+10))),(gx+(x*UNIT)+i), (gy-(H_TASK/2)-(task[i]*(H_TASK+10))), 10);
 }
 
-//--------------------------------------------------------------------------
-//DRAW RESOURCE OWNER
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			DRAW RESOURCE OWNER
+//--------------------------------------------------------------------------------------------
 
 void draw_resource(int gx, int gy)
 {
@@ -1026,9 +1043,9 @@ int i, n, ax, bx;
 	}
 }
 
-//--------------------------------------------------------------------------
-//GRAPHIC TASK
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			GRAPHIC TASK
+//--------------------------------------------------------------------------------------------
 
 void * graphic_task(void * arg)
 {
@@ -1067,6 +1084,8 @@ char			l[2];
 				sprintf(l," %i ", d_miss[(i-1)]);
 				textout_ex(screen, font, l, (ORIGIN_GRAPHIC_X+GRAPHIC_W+SPACE), (ORIGIN_Y[mod]-(i*(H_TASK+10))-10), 7, 4);
 			}
+			sprintf(l," %i ", m_tp.dmiss);
+			textout_ex(screen, font, l, (ORIGIN_GRAPHIC_X+GRAPHIC_W+SPACE), (ORIGIN_Y[mod]-10), 7, 4);
 			
 			run_task = 7;
 			x++;
@@ -1078,30 +1097,22 @@ char			l[2];
 			}
 		}
 		
-		for(i=0; i<MAX_MS_SCALE; i++)
-			r_task[i] = 7;
-		for(i=0; i<MAX_MS_SCALE; i++){
-			a_occupation[i] = 0;
-			b_occupation[i] = 0;
-		}		
-		nu=0;
-		for(i=0; i<UNIT; i++)
-			task[i] = 7;
+		reset();
 		
 		wait_for_period(&graphic_tp);
 	}
 }
 
-//--------------------------------------------------------------------------
-//GENERIC TASK
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			GENERIC TASK
+//--------------------------------------------------------------------------------------------
 
 void * t_task(void * arg) 
 {
 	struct 	task_par	*tp;
 	struct	timespec	t;
 	struct	timespec	at;
-	int					mod;
+	int					mod, rc;
 	int					c=0,ca=0, cb=0;
 	int					argument;
 	char				task_name[10];
@@ -1268,7 +1279,12 @@ void * t_task(void * arg)
 			
 			if(stop==1)
 			{
-				free_r++;
+				rc = pthread_barrier_wait(&stop_barrier);
+				if((rc !=0) && (rc != PTHREAD_BARRIER_SERIAL_THREAD))
+				{
+					perror("Could not wait on barrier");
+					exit(-1);
+				}
 				printf("sto per killarmi\n");
 				pthread_exit(0);			
 			}
@@ -1280,9 +1296,9 @@ void * t_task(void * arg)
 		}
 }
 
-//--------------------------------------------------------------------------
-//main TASK
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			MAIN TASK
+//--------------------------------------------------------------------------------------------
 
 void * m_task(void * arg)
 {
@@ -1316,9 +1332,9 @@ struct timespec	t,at;
 		}
 }
 
-//--------------------------------------------------------------------------
-//WORKLOAD TASK
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			WORKLOAD TASK
+//--------------------------------------------------------------------------------------------
 
 void * workload_task(void * arg)
 {
@@ -1351,9 +1367,9 @@ struct	task_par	*tp;
 		}
 }
 
-//--------------------------------------------------------------------------
-//TIME ANALYSIS
-//--------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------
+//			TIME ANALYSIS
+//--------------------------------------------------------------------------------------------
 
 int pox_max_array(int a[], int dim)
 {
