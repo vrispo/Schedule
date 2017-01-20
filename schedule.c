@@ -115,9 +115,8 @@ double			pwl = 0;		//previous workload
 bool			run = TRUE;
 int			run_task;
 int			stop=0;
-int			free_r=0;
 
-bool			pip = TRUE;
+int			mod = 0;
 
 int			ORIGIN_Y[2];		//#0:PIP #1:PCP
 int			ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
@@ -306,7 +305,7 @@ int		lcol,lrow,i;
 	textout_ex(screen, font, "CS B", (BOX_X+(lcol*5)+10), (BOX_Y+10), 7, -1);
 	
 	for(i=1; i<BOX_ROWS; i++)
-	line(screen, (BOX_X+10), (BOX_Y+(lrow*i)), (BOX_X+BOX_W-10), (BOX_Y+(lrow*i)), 7);
+		line(screen, (BOX_X+10), (BOX_Y+(lrow*i)), (BOX_X+BOX_W-10), (BOX_Y+(lrow*i)), 7);
 	
 	//#task
 	textout_ex(screen, font, "TASK 1", (BOX_X+10), (BOX_Y+(lrow*1)+10), 7, -1);
@@ -509,7 +508,10 @@ cpu_set_t	cpuset;
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[1], phgraphic[1], true);
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 	
-	pthread_barrier_init(&stop_barrier, NULL, 5);
+	//create mutexs and barrier
+	pthread_barrier_init(&stop_barrier, NULL, 5);	
+	create_mux_pip();
+	create_mux_pcp();
 	
 	//create workload task
 	create_workload_task();
@@ -611,17 +613,8 @@ void create_task(void)
 struct		timespec t,at;
 int			i;
 
-	stop=0;
-	
 	for(i=0; i<N_TASK; i++)
 		d_miss[i]=0;
-
-	if(pip){
-		create_mux_pip();
-	}
-	else{
-		create_mux_pcp();
-	}
 
 	create_task_1();
 	
@@ -657,7 +650,6 @@ cpu_set_t	cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 
-	//create task 1
 	t1_tp.arg=1;
 	t1_tp.period=period[0];
 	t1_tp.deadline=deadline[0];
@@ -684,7 +676,6 @@ cpu_set_t	cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 
-	//create task 2
 	t2_tp.arg=2;
 	t2_tp.period=period[1];
 	t2_tp.deadline=deadline[1];
@@ -711,7 +702,6 @@ cpu_set_t	cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 
-	//create task 3
 	t3_tp.arg=3;
 	t3_tp.period=period[2];
 	t3_tp.deadline=deadline[2];
@@ -738,7 +728,6 @@ cpu_set_t	cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 
-	//create task 4
 	t4_tp.arg=4;
 	t4_tp.period=period[3];
 	t4_tp.deadline=deadline[3];
@@ -764,7 +753,7 @@ cpu_set_t	cpuset;
 
 void change_time_scale(void)
 {
-int	mod, i=0;
+int i=0;
 	
 	pox_ts++;
 	if(pox_ts==3){
@@ -776,14 +765,9 @@ int	mod, i=0;
 
 	create_graphic_task();
 	
-	if(pip)
-		mod=0;
-	else
-		mod=1;
-	
-	//ridisegno la parte dx del graphico
+	//redraw part of the graph
 	rectfill(screen, ORIGIN_GRAPHIC_X+(x*UNIT), (ORIGIN_Y[mod]-GRAPHIC_H), (ORIGIN_GRAPHIC_X+((x*UNIT)+GRAPHIC_W)), (ORIGIN_Y[mod]), 0);
-	//asse x
+	//axes x
 	line(screen, (ORIGIN_GRAPHIC_X+(x*UNIT)), ORIGIN_Y[mod], (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
 	line(screen, (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]-5), (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
 	line(screen, (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT))-5)), (ORIGIN_Y[mod]+5), (ORIGIN_GRAPHIC_X+((x*UNIT)+(GRAPHIC_W-(x*UNIT)))), ORIGIN_Y[mod], 7);
@@ -825,7 +809,7 @@ void create_mux_pcp(void)
 	pthread_mutexattr_setprioceiling(&mattr_pcp, max_prio_b);
 	if(pthread_mutex_init(&mux_b_pcp, &mattr_pcp)!=0)
 		perror("Error in create mux b pcp");
-	pthread_mutexattr_destroy(&mattr_pip);
+	pthread_mutexattr_destroy(&mattr_pcp);
 }
 
 //--------------------------------------------------------------------------------------------
@@ -867,7 +851,7 @@ void analysis_key(void)
 {
 char	scan, ascii;
 bool	keyp=FALSE;
-int		mod, rc;
+int		rc;
 
 	keyp=keypressed();
 	if(keyp){
@@ -881,14 +865,9 @@ int		mod, rc;
 				break;
 			}
 			case KEY_SPACE:
-			{	
-				printf("sono in stop\n");
+			{
 				if(stop)
 				{
-					if(pip)
-						mod=0;
-					else
-						mod=1;
 					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
 					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
 					pwl = 0;
@@ -917,9 +896,11 @@ int		mod, rc;
 			{
 				if(!stop)
 				{
-					printf("sono in right\n");
 					stop=!stop;
-					pip=!pip;
+					if(mod==0)
+						mod=1;
+					else
+						mod=0;
 					rc = pthread_barrier_wait(&stop_barrier);
 					if((rc !=0) && (rc != PTHREAD_BARRIER_SERIAL_THREAD))
 					{
@@ -929,7 +910,10 @@ int		mod, rc;
 				}
 				else
 				{
-					pip=!pip;
+					if(mod==0)
+						mod=1;
+					else
+						mod=0;
 				}
 				break;
 			}
@@ -1051,7 +1035,6 @@ void * graphic_task(void * arg)
 {
 struct timespec	at;
 int				i=0;
-int				mod;
 char			l[2];
 
 	set_period(&graphic_tp);	
@@ -1064,11 +1047,6 @@ char			l[2];
 			pwl = wl;
 			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
 			free_ms = 0;
-			
-			if(pip)
-				mod=0;
-			else
-				mod=1;
 				
 			clock_gettime(CLOCK_MONOTONIC, &at);
 
@@ -1112,7 +1090,7 @@ void * t_task(void * arg)
 	struct 	task_par	*tp;
 	struct	timespec	t;
 	struct	timespec	at;
-	int					mod, rc;
+	int					rc;
 	int					c=0,ca=0, cb=0;
 	int					argument;
 	char				task_name[10];
@@ -1125,11 +1103,6 @@ void * t_task(void * arg)
 		cb=sect_b_time[(argument-1)];
 		
 		//draw parameters
-		if(pip)
-			mod=0;
-		else
-			mod=1;
-		
 		draw_deadline(*tp, argument, mod);
 		draw_activation(*tp, argument, mod);
 		
@@ -1149,7 +1122,7 @@ void * t_task(void * arg)
 					run_task = argument;
 				}while(time_cmp(at, t)<=0);
 				
-				if(pip)
+				if(mod==0)
 					pthread_mutex_lock(&mux_a_pip);
 				else
 					pthread_mutex_lock(&mux_a_pcp);
@@ -1164,7 +1137,7 @@ void * t_task(void * arg)
 					run_task=argument;
 				}while(time_cmp(at, t)<=0);
 				
-				if(pip)
+				if(mod==0)
 					pthread_mutex_lock(&mux_b_pip);
 				else
 					pthread_mutex_lock(&mux_b_pcp);
@@ -1181,7 +1154,7 @@ void * t_task(void * arg)
 				}while(time_cmp(at, t)<=0);				
 				
 				b=0;				
-				if(pip)
+				if(mod==0)
 					pthread_mutex_unlock(&mux_b_pip);
 				else
 					pthread_mutex_unlock(&mux_b_pcp);
@@ -1196,7 +1169,7 @@ void * t_task(void * arg)
 				}while(time_cmp(at, t)<=0);
 				
 				a=0;				
-				if(pip)
+				if(mod==0)
 					pthread_mutex_unlock(&mux_a_pip);
 				else
 					pthread_mutex_unlock(&mux_a_pcp);	
@@ -1222,7 +1195,7 @@ void * t_task(void * arg)
 				
 				if(ca!=0)
 				{
-					if(pip)
+					if(mod==0)
 						pthread_mutex_lock(&mux_a_pip);
 					else
 						pthread_mutex_lock(&mux_a_pcp);
@@ -1238,7 +1211,7 @@ void * t_task(void * arg)
 					}while(time_cmp(at, t)<=0);
 					
 					a = 0;
-					if(pip)
+					if(mod==0)
 						pthread_mutex_unlock(&mux_a_pip);
 					else
 						pthread_mutex_unlock(&mux_a_pcp);	
@@ -1246,7 +1219,7 @@ void * t_task(void * arg)
 				
 				if(cb!=0)
 				{
-					if(pip)
+					if(mod==0)
 						pthread_mutex_lock(&mux_b_pip);
 					else
 						pthread_mutex_lock(&mux_b_pcp);
@@ -1262,7 +1235,7 @@ void * t_task(void * arg)
 					}while(time_cmp(at, t)<=0);
 					
 					b = 0;
-					if(pip)
+					if(mod==0)
 						pthread_mutex_unlock(&mux_b_pip);
 					else
 						pthread_mutex_unlock(&mux_b_pcp);					
@@ -1285,7 +1258,6 @@ void * t_task(void * arg)
 					perror("Could not wait on barrier");
 					exit(-1);
 				}
-				printf("sto per killarmi\n");
 				pthread_exit(0);			
 			}
 			
@@ -1303,13 +1275,7 @@ void * t_task(void * arg)
 void * m_task(void * arg)
 {
 struct	task_par	*tp;
-int					mod;
 struct timespec	t,at;
-
-		if(pip)
-			mod=0;
-		else
-			mod=1;
 
 		tp= (struct task_par*)arg;
 		set_period(tp);
