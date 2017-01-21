@@ -116,7 +116,7 @@ bool			run = TRUE;
 int			run_task;
 int			stop=0;
 
-int			mod = 0;
+int			mod = 1;
 
 int			ORIGIN_Y[2];		//#0:PIP #1:PCP
 int			ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
@@ -878,9 +878,8 @@ int		rc;
 					b=0;
 					reset();
 					stop=!stop;
-					draw_deadline(m_tp, 0, mod);
-					draw_activation(m_tp, 0, mod);
-					create_task();			
+					pthread_cancel(m_tid);
+					create_main_task();		
 				}
 				else
 				{
@@ -919,9 +918,8 @@ int		rc;
 					b=0;
 					reset();
 					stop=!stop;
-					draw_deadline(m_tp, 0, mod);
-					draw_activation(m_tp, 0, mod);
-					create_task();	
+					pthread_cancel(m_tid);
+					create_main_task();
 				}
 				else
 				{
@@ -1307,12 +1305,13 @@ struct timespec	t,at;
 			analysis_key();
 			clock_gettime(CLOCK_MONOTONIC, &t);
 			time_add_ms(&t, 50);
-			do{
-				use = true;
-				run_task=0;
-				clock_gettime(CLOCK_MONOTONIC, &at);
-			}while((time_cmp(at, t)<=0)&(stop==0));
-
+			if(stop==0){
+				do{
+					use = true;
+					run_task=0;
+					clock_gettime(CLOCK_MONOTONIC, &at);
+				}while(time_cmp(at, t)<=0);
+			}
 			wait_for_period(tp);
 		}
 }
@@ -1331,23 +1330,25 @@ struct	task_par	*tp;
 		while(1){			
 			control_CPU("workload task", pthread_self(), 1);
 			
-			if((!use)&(free_ms<time_scale[pox_ts]))
-				free_ms++;
-			
-			if((use==false)&(nu<time_scale[pox_ts]))
-				r_task[nu]=7;
-			if((use==true)&(nu<time_scale[pox_ts]))
-				r_task[nu]=run_task;
-			
-			if(nu<time_scale[pox_ts])
-			{
-				a_occupation[nu] = a;
-				b_occupation[nu] = b;
+			if(stop==0){
+				if((!use)&(free_ms<time_scale[pox_ts]))
+					free_ms++;
+				
+				if((use==false)&(nu<time_scale[pox_ts]))
+					r_task[nu]=7;
+				if((use==true)&(nu<time_scale[pox_ts]))
+					r_task[nu]=run_task;
+				
+				if(nu<time_scale[pox_ts])
+				{
+					a_occupation[nu] = a;
+					b_occupation[nu] = b;
+				}
+				
+				use = false;
+				nu++;
 			}
-			
-			use = false;
-			nu++;
-			
+
 			wait_for_period(tp);
 		}
 }
