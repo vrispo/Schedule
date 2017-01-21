@@ -375,7 +375,7 @@ char s[60];
 }
 
 //--------------------------------------------------------------------------------------------
-//			SETUP
+//			RESET
 //--------------------------------------------------------------------------------------------
 
 void reset(void)
@@ -437,17 +437,17 @@ int		n, i = 0;
 		{
 			if((sect_a_time[i]==0)|(sect_b_time[i]==0))
 			{
-				printf("Error in taskset.txt nested can not be 1 if the use of both the resource is not different from 0 \n");
+				printf("Error in task set file nested can not be 1 if the use of both the resource is not different from 0 \n");
 				exit(-1);
 			}
 			if(sect_a_time[i]<sect_b_time[i])
 			{
-				printf("Error in taskset.txt in nested mode the use of the second resource must be less than the first because his critical section is nested in the other\n");
+				printf("Error in task set file in nested mode the use of the second resource must be less than the first because his critical section is nested in the other\n");
 				exit(-1);
 			}
 			if(sect_a_time[i]>comp_time[i])
 			{
-				printf("Error in taskset.txt in every case the total computation time must be greater or equal than the two critical sections\n");
+				printf("Error in task set file in every case the total computation time must be greater or equal than the two critical sections\n");
 				exit(-1);
 			}
 			nested[i]=true;
@@ -457,9 +457,14 @@ int		n, i = 0;
 			nested[i]=false;	
 			if((sect_a_time[i]+sect_b_time[i])>comp_time[i])
 			{
-				printf("Error in taskset.txt in every case the total computation time must be greater or equal than the two critical sections\n");
+				printf("Error in task set file in every case the total computation time must be greater or equal than the two critical sections\n");
 				exit(-1);
 			}
+		}
+		if(deadline[i]>period[i])
+		{
+			printf("Error in task set file in every case the period must be greater or equal than the deadline\n");
+			exit(-1);
 		}
 		
 		i++;
@@ -486,7 +491,6 @@ cpu_set_t	cpuset;
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
 	clear_to_color(screen, 0);
 
-	run_task=0;
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
 /*	f_sched_budget=fopen("/proc/sys/kernel/sched_rt_runtime_us","w");
@@ -523,8 +527,6 @@ cpu_set_t	cpuset;
 	//create graphic task
 	create_graphic_task();
 
-	//create generic tasks
-	create_task();
 }
 
 //--------------------------------------------------------------------------------------------
@@ -539,7 +541,7 @@ cpu_set_t	cpuset;
 	CPU_SET(0,&cpuset);
 	
 	m_tp.arg=0;
-	m_tp.period=500;
+	m_tp.period=210;
 	m_tp.deadline=200;
 	m_tp.priority=99;
 	m_tp.dmiss=0;
@@ -549,7 +551,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setaffinity_np(&m_attr, sizeof(cpuset), &cpuset);
 	
 	pthread_attr_setinheritsched(&m_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&m_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&m_attr, SCHED_RR);
 	m_par.sched_priority=m_tp.priority;
 	pthread_attr_setschedparam(&m_attr, &m_par);
 	
@@ -570,14 +572,14 @@ cpu_set_t	cpuset;
 	workload_tp.arg=0;
 	workload_tp.period=1;
 	workload_tp.deadline=1;
-	workload_tp.priority=1;
+	workload_tp.priority=99;
 	workload_tp.dmiss=0;
 
 	pthread_attr_init(&workload_attr);
 	pthread_attr_setdetachstate(&workload_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&workload_attr, sizeof(cpuset), &cpuset);
 	pthread_attr_setinheritsched(&workload_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&workload_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&workload_attr, SCHED_RR);
 	workload_par.sched_priority=workload_tp.priority;
 	pthread_attr_setschedparam(&workload_attr, &workload_par);
 	pthread_create(&workload_tid, &workload_attr, workload_task, &workload_tp);
@@ -601,7 +603,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setaffinity_np(&graphic_attr, sizeof(cpuset), &cpuset);
 	
 	pthread_attr_setinheritsched(&graphic_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&graphic_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&graphic_attr, SCHED_RR);
 	graphic_par.sched_priority=graphic_tp.priority;
 	pthread_attr_setschedparam(&graphic_attr, &graphic_par);
 	
@@ -614,7 +616,7 @@ cpu_set_t	cpuset;
 
 void create_task(void)
 {
-struct		timespec t,at;
+struct		timespec t;
 int			i;
 
 	for(i=0; i<N_TASK; i++)
@@ -623,26 +625,20 @@ int			i;
 	create_task_1();
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
-	time_add_ms(&t, 150);
-	do{
-		clock_gettime(CLOCK_MONOTONIC, &at);
-	}while(time_cmp(at, t)<=0);
+	time_add_ms(&t, 100);
+	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
 	create_task_2();
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
-	time_add_ms(&t, 50);
-	do{
-		clock_gettime(CLOCK_MONOTONIC, &at);
-	}while(time_cmp(at, t)<=0);
+	time_add_ms(&t, 100);
+	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
 	create_task_3();
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
-	time_add_ms(&t, 50);
-	do{
-		clock_gettime(CLOCK_MONOTONIC, &at);
-	}while(time_cmp(at, t)<=0);
+	time_add_ms(&t, 100);
+	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
 	create_task_4();
 }
@@ -663,7 +659,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setdetachstate(&t1_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t1_attr, sizeof(cpuset), &cpuset);
 	pthread_attr_setinheritsched(&t1_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&t1_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&t1_attr, SCHED_RR);
 	t1_par.sched_priority=t1_tp.priority;
 	pthread_attr_setschedparam(&t1_attr, &t1_par);
 	if(pthread_create(&t1_tid, &t1_attr, t_task, &t1_tp)!=0)
@@ -689,7 +685,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setdetachstate(&t2_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t2_attr, sizeof(cpuset), &cpuset);
 	pthread_attr_setinheritsched(&t2_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&t2_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&t2_attr, SCHED_RR);
 	t2_par.sched_priority=t2_tp.priority;
 	pthread_attr_setschedparam(&t2_attr, &t2_par);
 	if(pthread_create(&t2_tid, &t2_attr, t_task, &t2_tp)!=0)
@@ -715,7 +711,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setdetachstate(&t3_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t3_attr, sizeof(cpuset), &cpuset);
 	pthread_attr_setinheritsched(&t3_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&t3_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&t3_attr, SCHED_RR);
 	t3_par.sched_priority=t3_tp.priority;
 	pthread_attr_setschedparam(&t3_attr, &t3_par);
 	if(pthread_create(&t3_tid, &t3_attr, t_task, &t3_tp)!=0)
@@ -741,7 +737,7 @@ cpu_set_t	cpuset;
 	pthread_attr_setdetachstate(&t4_attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setaffinity_np(&t4_attr, sizeof(cpuset), &cpuset);
 	pthread_attr_setinheritsched(&t4_attr, PTHREAD_EXPLICIT_SCHED);
-	pthread_attr_setschedpolicy(&t4_attr, SCHED_FIFO);
+	pthread_attr_setschedpolicy(&t4_attr, SCHED_RR);
 	t4_par.sched_priority=t4_tp.priority;
 	pthread_attr_setschedparam(&t4_attr, &t4_par);
 	if(pthread_create(&t4_tid, &t4_attr, t_task, &t4_tp)!=0)
@@ -882,6 +878,8 @@ int		rc;
 					b=0;
 					reset();
 					stop=!stop;
+					draw_deadline(m_tp, 0, mod);
+					draw_activation(m_tp, 0, mod);
 					create_task();			
 				}
 				else
@@ -911,13 +909,26 @@ int		rc;
 						perror("Could not wait on barrier");
 						exit(-1);
 					}
+					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
+					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
+					pwl = 0;
+					wl = 0;
+					free_ms = 0;
+					x=0;
+					a=0;
+					b=0;
+					reset();
+					stop=!stop;
+					draw_deadline(m_tp, 0, mod);
+					draw_activation(m_tp, 0, mod);
+					create_task();	
 				}
 				else
 				{
 					if(mod==0)
 						mod=1;
 					else
-						mod=0;
+						mod=0;	
 				}
 				break;
 			}
@@ -1286,6 +1297,10 @@ struct timespec	t,at;
 		
 		draw_deadline(*tp, 0, mod);
 		draw_activation(*tp, 0, mod);
+		
+		//create generic tasks
+		create_task();
+		wait_for_period(tp);
 
 		while(1){			
 			control_CPU("m task", pthread_self(), 0);			
