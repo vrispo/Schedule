@@ -116,7 +116,7 @@ bool			run = TRUE;
 int			run_task;
 int			stop=0;
 
-int			mod = 1;
+int			mod = 0;
 
 int			ORIGIN_Y[2];		//#0:PIP #1:PCP
 int			ORIGIN_WL_Y[2];		//#0:PIP #1:PCP
@@ -623,24 +623,28 @@ int			i;
 		d_miss[i]=0;
 
 	create_task_1();
+	set_period(&t1_tp);
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	time_add_ms(&t, 100);
 	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
 	create_task_2();
+	set_period(&t2_tp);
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	time_add_ms(&t, 100);
 	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
 	create_task_3();
+	set_period(&t3_tp);
 	
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	time_add_ms(&t, 100);
 	clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
 
 	create_task_4();
+	set_period(&t4_tp);
 }
 
 void create_task_1(void)
@@ -1109,7 +1113,7 @@ void * t_task(void * arg)
 	char				task_name[10];
 
 		tp= (struct task_par*)arg;
-		set_period(tp);
+		//set_period(tp);
 		argument=(*tp).arg;
 		
 		ca=sect_a_time[(argument-1)];
