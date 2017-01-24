@@ -103,11 +103,13 @@ char			phgraphic[2][4]= {"PIP","PCP"};
 char			phgraphicwl[2][13]= {"PIP workload","PCP workload"};
 
 int			x = 0;
-int			task[UNIT];
 int			nu = 0;
-int			r_task[MAX_MS_SCALE];
 
-bool			use = false;
+sem_t		mandrawsem;
+int			task[UNIT];
+int			r_task[MAX_MS_SCALE];
+int			a_occupation[MAX_MS_SCALE];
+int			b_occupation[MAX_MS_SCALE];
 
 sem_t		wlvariablesem;
 int			free_ms = 0;		//number of ms that the CPU is free
@@ -115,9 +117,9 @@ double			wl = 0;			//actual workload
 double			pwl = 0;		//previous workload
 
 bool			run = TRUE;
+bool			use = false;
 int			run_task;
 int			stop=0;
-
 int			mod = 0;
 
 int			ORIGIN_Y[2];		//#0:PIP #1:PCP
@@ -171,9 +173,7 @@ struct sched_param	m_par;
 int			max_prio_a = 90;
 int			max_prio_b = 70;
 int			a = 0;
-int			a_occupation[MAX_MS_SCALE];
 int			b = 0;
-int			b_occupation[MAX_MS_SCALE];
 
 pthread_barrier_t	stop_barrier;
 
@@ -523,6 +523,7 @@ cpu_set_t	cpuset;
 	create_mux_pip();
 	create_mux_pcp();
 	sem_init(&wlvariablesem, 0, 1);
+	sem_init(&mandrawsem, 0, 1);
 	
 	//create workload task
 	create_workload_task();
@@ -1075,11 +1076,11 @@ char			l[2];
 			sem_post(&wlvariablesem);
 				
 			clock_gettime(CLOCK_MONOTONIC, &at);
-
-			//if(run_task!=7)
-				multi_exec(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
-
+			
+			sem_wait(&mandrawsem);
+			multi_exec(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
 			draw_resource(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
+			sem_post(&mandrawsem);
 
 			if(x>0)
 				line(screen, (ORIGIN_GRAPHIC_X+((x-1)*UNIT)), (ORIGIN_WL_Y[mod]-(GRAPHIC_H*pwl)), (ORIGIN_GRAPHIC_X+(x*UNIT)), (ORIGIN_WL_Y[mod]-(GRAPHIC_H*wl)), 4);
@@ -1091,7 +1092,6 @@ char			l[2];
 			sprintf(l," %i ", m_tp.dmiss);
 			textout_ex(screen, font, l, (ORIGIN_GRAPHIC_X+GRAPHIC_W+SPACE), (ORIGIN_Y[mod]-10), 7, 4);
 			
-			//run_task = 7;
 			x++;
 			if((x*UNIT)>=GRAPHIC_W){
 				x=0;					
@@ -1122,7 +1122,6 @@ void * t_task(void * arg)
 	char				task_name[10];
 
 		tp= (struct task_par*)arg;
-		//set_period(tp);
 		argument=(*tp).arg;
 		
 		ca=sect_a_time[(argument-1)];
@@ -1350,6 +1349,7 @@ struct	task_par	*tp;
 					sem_post(&wlvariablesem);
 				}
 				
+				sem_wait(&mandrawsem);
 				if((use==false)&(nu<time_scale[pox_ts]))
 					r_task[nu]=7;
 				if((use==true)&(nu<time_scale[pox_ts]))
@@ -1360,6 +1360,7 @@ struct	task_par	*tp;
 					a_occupation[nu] = a;
 					b_occupation[nu] = b;
 				}
+				sem_post(&mandrawsem);
 				
 				use = false;
 				nu++;
