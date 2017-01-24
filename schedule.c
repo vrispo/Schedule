@@ -108,6 +108,8 @@ int			nu = 0;
 int			r_task[MAX_MS_SCALE];
 
 bool			use = false;
+
+sem_t		wlvariablesem;
 int			free_ms = 0;		//number of ms that the CPU is free
 double			wl = 0;			//actual workload
 double			pwl = 0;		//previous workload
@@ -516,10 +518,11 @@ cpu_set_t	cpuset;
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[1], phgraphic[1], true);
 	setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[1], "PCP workload", false);
 	
-	//create mutexs and barrier
+	//create mutexs, semaphores and barrier
 	pthread_barrier_init(&stop_barrier, NULL, 5);	
 	create_mux_pip();
 	create_mux_pcp();
+	sem_init(&wlvariablesem, 0, 1);
 	
 	//create workload task
 	create_workload_task();
@@ -874,9 +877,11 @@ int		rc;
 				{
 					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
 					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
+					sem_wait(&wlvariablesem);
 					pwl = 0;
 					wl = 0;
 					free_ms = 0;
+					sem_post(&wlvariablesem);
 					x=0;
 					a=0;
 					b=0;
@@ -914,9 +919,11 @@ int		rc;
 					}
 					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod], phgraphic[mod], true);
 					setup_graphic(ORIGIN_GRAPHIC_X, ORIGIN_WL_Y[mod], phgraphicwl[mod], false);
+					sem_wait(&wlvariablesem);
 					pwl = 0;
 					wl = 0;
 					free_ms = 0;
+					sem_post(&wlvariablesem);
 					x=0;
 					a=0;
 					b=0;
@@ -1061,13 +1068,15 @@ char			l[2];
 		control_CPU("Graphic task", pthread_self(),1);
 		if(!stop){
 			//calcola workload e fai graphico
+			sem_wait(&wlvariablesem);
 			pwl = wl;
 			wl = 1 - ((double)free_ms/(double)time_scale[pox_ts]);
 			free_ms = 0;
+			sem_post(&wlvariablesem);
 				
 			clock_gettime(CLOCK_MONOTONIC, &at);
 
-			if(run_task!=7)
+			//if(run_task!=7)
 				multi_exec(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
 
 			draw_resource(ORIGIN_GRAPHIC_X, ORIGIN_Y[mod]);
@@ -1082,7 +1091,7 @@ char			l[2];
 			sprintf(l," %i ", m_tp.dmiss);
 			textout_ex(screen, font, l, (ORIGIN_GRAPHIC_X+GRAPHIC_W+SPACE), (ORIGIN_Y[mod]-10), 7, 4);
 			
-			run_task = 7;
+			//run_task = 7;
 			x++;
 			if((x*UNIT)>=GRAPHIC_W){
 				x=0;					
@@ -1335,8 +1344,11 @@ struct	task_par	*tp;
 			control_CPU("workload task", pthread_self(), 1);
 			
 			if(stop==0){
-				if((!use)&(free_ms<time_scale[pox_ts]))
-					free_ms++;
+				if((!use)&(free_ms<time_scale[pox_ts])){
+					sem_wait(&wlvariablesem);
+					free_ms++;	
+					sem_post(&wlvariablesem);
+				}
 				
 				if((use==false)&(nu<time_scale[pox_ts]))
 					r_task[nu]=7;
