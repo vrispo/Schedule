@@ -195,22 +195,12 @@ pthread_mutexattr_t	mattr_pcp;
 
 int main(int argc, char * argv[])
 {
-cpu_set_t	cpuset;
-pthread_t	thread;
-
-    thread = pthread_self();
-	CPU_ZERO(&cpuset);
-	CPU_SET(0, &cpuset);
-	if (pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
-		perror("pthread_setaffinity_np");
-
 	if(argc!=2){
 		printf("Error: Must pass the name of the task set file by command line\n");
 		exit(-1);
 	}
 	set_parameter(argv[1]);
 	setup();
-	//create main task
 	create_main_task();
 
 	while(run);
@@ -346,7 +336,6 @@ void write_instruction(void)
 {
 char s[60];
 
-	//do the box for the instructions
 	rectfill(screen, INSTR_X, INSTR_Y, (INSTR_X+INSTR_W), (INSTR_Y+INSTR_H), 0);
 	textout_ex(screen, font, "INSTRUCTIONS", (INSTR_X+7), (INSTR_Y-5), 7, -1);
 	line(screen, INSTR_X, INSTR_Y, (INSTR_X+5), INSTR_Y, 7);
@@ -435,6 +424,11 @@ int		n, i = 0;
 		sect_b_time[i]=atoi(tok);
 		tok=strtok(NULL, " ");
 		n=atoi(tok);
+		if((n>1)||(n<0))
+		{
+			printf("Error in task set file in every case nested must be equal to 0 or 1\n");
+			exit(-1);
+		}
 		if(n==1)
 		{
 			if((sect_a_time[i]==0)|(sect_b_time[i]==0))
@@ -468,6 +462,23 @@ int		n, i = 0;
 			printf("Error in task set file in every case the period must be greater or equal than the deadline\n");
 			exit(-1);
 		}
+		if((priority[i]>99)||(priority[i]<1))
+		{
+			printf("Error in task set file in every case the priority must be between 1 and 99\n");
+			exit(-1);
+		}
+		if((period[i]<1)||(deadline[i]<1)||(comp_time[i]<1)||(sect_a_time[i]<0)||(sect_b_time[i]<0))
+		{
+			printf("Error in task set file in every case the parameter must be non negative\n");
+			exit(-1);
+		}
+		
+		if(sect_a_time[i]!=0)
+			if(priority[i]>max_prio_a)
+				max_prio_a = priority[i];
+		if(sect_b_time[i]!=0)
+					if(priority[i]>max_prio_b)
+						max_prio_b = priority[i];
 		
 		i++;
 	}while(fgets(riga,99,ts)!=NULL);
@@ -483,7 +494,6 @@ int		n, i = 0;
 
 void setup(void)
 {
-cpu_set_t	cpuset;
 //FILE		*f_sched_budget;
 
 	allegro_init();
@@ -493,8 +503,6 @@ cpu_set_t	cpuset;
 	set_gfx_mode(GFX_AUTODETECT_WINDOWED, WINDOW_W, WINDOW_H, 0, 0);
 	clear_to_color(screen, 0);
 
-	CPU_ZERO(&cpuset);
-	CPU_SET(0, &cpuset);
 /*	f_sched_budget=fopen("/proc/sys/kernel/sched_rt_runtime_us","w");
 	if(f_sched_budget==NULL){
 		perror("Error in file open /proc/sys/kernel/sched_rt_runtime_us you must run the program as super user ");
@@ -503,11 +511,10 @@ cpu_set_t	cpuset;
 	fprintf(f_sched_budget,"1000000");
 	fclose(f_sched_budget);*/
 
-
 	write_instruction();
 	draw_taskset_box();
 
-	//graphici
+	//graphs
 	H_TASK=(GRAPHIC_H-(N_TASK*10))/(N_TASK+1);
 	ORIGIN_Y[0]=INSTR_Y+INSTR_H+SPACE+GRAPHIC_H;
 	ORIGIN_WL_Y[0]=ORIGIN_Y[0]+SPACE+GRAPHIC_H;
@@ -524,11 +531,8 @@ cpu_set_t	cpuset;
 	create_mux_pcp();
 	sem_init(&wlvariablesem, 0, 1);
 	sem_init(&mandrawsem, 0, 1);
-	
-	//create workload task
+
 	create_workload_task();
-	
-	//create graphic task
 	create_graphic_task();
 
 }
@@ -1353,8 +1357,7 @@ struct	task_par	*tp;
 				if((use==false)&(nu<time_scale[pox_ts]))
 					r_task[nu]=7;
 				if((use==true)&(nu<time_scale[pox_ts]))
-					r_task[nu]=run_task;
-				
+					r_task[nu]=run_task;				
 				if(nu<time_scale[pox_ts])
 				{
 					a_occupation[nu] = a;
